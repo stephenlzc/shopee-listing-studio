@@ -64,30 +64,6 @@ v1.2 引入了專業的廣告製作流程：
     *   **Gamma.app 版本**: 生成簡報/網頁結構指令（400-600 字）。
 *   **圖片自動引用**: 如果 Phase 2 已生成圖片，提示詞會自動引用對應的圖片檔名。*   **一鍵複製與開啟**: 複製提示詞後自動開啟對應的生成平台
 
-### 7. 系統提示詞優化 (v3.0 新功能)
-*   **階段一優化**:
-    *   差異化標準具體化（四個維度差異要求）
-    *   品質標準定義（構圖、光影、文字排版、品牌一致性）
-    *   目標客群明確化（新增目標客群描述欄位）
-    *   視覺元素具體化（新增視覺元素描述欄位）
-    *   品牌資訊處理深度（提取方法、雜訊過濾）
-    *   競爭差異化分析
-    *   輸出格式驗證
-*   **階段二優化**:
-    *   敘事連貫性要求（轉場邏輯、視覺一致性、文案銜接）
-    *   視覺一致性要求（8 張圖統一風格）
-    *   文案長度規範（明確字數限制）
-    *   CTA 設計具體化（動詞選擇、緊迫感、行動指示）
-    *   參考文案分析深度（結構分析、說服技巧、情感訴求）
-    *   AIDA 模型應用（明確對應關係）
-    *   痛點挖掘深度（功能、情感、社交痛點）
-    *   信任背書多樣性（數據、證言、認證、品牌故事）
-    *   產品特點呈現（優先級、視覺化、術語轉譯）
-    *   階段銜接一致性（延續階段一的視覺風格）
-    *   輸出格式驗證（完整的格式檢查要求）
-
----
-
 ## 🔑 API 調用管理
 
 ### API Key 設定
@@ -117,76 +93,9 @@ v1.2 引入了專業的廣告製作流程：
 
 ---
 
-## 🚀 部署指南
+## 🚀 部署指南 (推薦使用 Cloudflare Pages)
 
-### GitHub Pages 部署
-
-#### 步驟 1: 設定 GitHub Actions
-1. 在您的 GitHub 儲存庫中，建立資料夾路徑：`.github/workflows/`
-2. 在該資料夾內建立一個檔案 `deploy.yml`
-3. 複製以下內容貼上：
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [ main ] # 或是 master，請確認您的主分支名稱
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install dependencies
-        run: npm install
-      - name: Build
-        run: npm run build
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-#### 步驟 2: 開啟權限
-1. 進入 GitHub 儲存庫的 **Settings** > **Pages**
-2. 在 **Build and deployment** > **Source** 選項中，選擇 **GitHub Actions** (不要選 Deploy from a branch)
-3. 推送程式碼更新，等待 Actions 跑完 (約 1-2 分鐘)，您的網站就會正常顯示了！
-
-#### 步驟 3: 設定 Base Path（可選）
-如果您的網站部署在子路徑下（例如 `https://username.github.io/repo-name/`），需要在 `vite.config.ts` 中設定 `base`：
-
-```typescript
-export default defineConfig({
-  base: '/repo-name/', // 替換為您的儲存庫名稱
-  // ... 其他設定
-})
-```
-
----
-
-### Cloudflare Pages 部署
+### Cloudflare Pages 部署步驟
 
 #### 步驟 1: 連接 GitHub 儲存庫
 1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/)
