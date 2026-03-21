@@ -19,13 +19,14 @@ interface CachedImage {
 const generateCacheKey = (
   prompt: string,
   aspectRatio: string,
-  refImageBase64?: string
+  refImageBase64?: string,
+  generationContext?: string
 ): string => {
   // 簡單的 hash 函數
   const refHash = refImageBase64 
     ? refImageBase64.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '')
     : '';
-  const combined = `${prompt}_${aspectRatio}_${refHash}`;
+  const combined = `${generationContext || 'default'}_${prompt}_${aspectRatio}_${refHash}`;
   
   // 使用簡單的 hash
   let hash = 0;
@@ -51,10 +52,11 @@ const isExpired = (timestamp: number): boolean => {
 export const getCachedImage = (
   prompt: string,
   aspectRatio: string,
-  refImageBase64?: string
+  refImageBase64?: string,
+  generationContext?: string
 ): string | null => {
   try {
-    const key = generateCacheKey(prompt, aspectRatio, refImageBase64);
+    const key = generateCacheKey(prompt, aspectRatio, refImageBase64, generationContext);
     const cached = localStorage.getItem(key);
     
     if (!cached) return null;
@@ -81,10 +83,11 @@ export const setCachedImage = (
   prompt: string,
   aspectRatio: string,
   imageData: string,
-  refImageBase64?: string
+  refImageBase64?: string,
+  generationContext?: string
 ): void => {
   try {
-    const key = generateCacheKey(prompt, aspectRatio, refImageBase64);
+    const key = generateCacheKey(prompt, aspectRatio, refImageBase64, generationContext);
     const cached: CachedImage = {
       data: imageData,
       timestamp: Date.now(),

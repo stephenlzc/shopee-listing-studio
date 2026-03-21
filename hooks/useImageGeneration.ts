@@ -17,7 +17,8 @@ interface UseImageGenerationReturn {
   generateImage: (
     prompt: string,
     aspectRatio: AspectRatio,
-    refImageBase64?: string
+    refImageBase64?: string,
+    generationContext?: 'phase2' | 'phase5'
   ) => Promise<void>;
   clearImage: () => void;
 }
@@ -31,14 +32,15 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
     async (
       prompt: string,
       aspectRatio: AspectRatio,
-      refImageBase64?: string
+      refImageBase64?: string,
+      generationContext: 'phase2' | 'phase5' = 'phase2'
     ) => {
       setLoading(true);
       setError(null);
 
       try {
         // 先檢查快取
-        const cached = getCachedImage(prompt, aspectRatio, refImageBase64);
+        const cached = getCachedImage(prompt, aspectRatio, refImageBase64, generationContext);
         if (cached) {
           setImage(cached);
           setLoading(false);
@@ -49,11 +51,12 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
         const imageData = await generateMarketingImage(
           prompt,
           refImageBase64,
-          aspectRatio
+          aspectRatio,
+          generationContext
         );
 
         // 儲存到快取
-        setCachedImage(prompt, aspectRatio, imageData, refImageBase64);
+        setCachedImage(prompt, aspectRatio, imageData, refImageBase64, generationContext);
 
         setImage(imageData);
       } catch (err) {

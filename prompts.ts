@@ -396,12 +396,11 @@ export const LANDING_PAGE_IMAGE_SYSTEM_PROMPT = `
 **--- 對於每一張圖，你需要提供 ---**
 1. **id**: 固定使用上表的 id
 2. **purpose**: 中文用途描述（5-15 字）
-3. **prompt_en**: 英文繪圖指令（30-80 字），**這非常重要，請遵守以下嚴格規範**：
-   - **【最嚴格警告：絕對禁止描述產品本身】**：生圖模型會自動把使用者的真實商品合併進去。你在這裡如果用了任何名詞去形容「商品的形狀、結構、圖案、扣環、皮箱、材質、零件等」，AI 的注意力會被干擾，並自行「重新發明」一個變形走樣的假商品！
-   - **你只能描述：純粹的「背景場景 (Background)」、「構圖留白」、「光影 (Lighting)」、「氛圍 (Mood)」與「墊放商品的台面材質」。**
-   - 色彩方案需與 Landing Page 主題呼應。
-   - **正確示範 ✅**: "A clean minimalist marble table top, soft morning sunlight casting gentle long shadows from the left, blurred green plants in the distance, neutral cinematic lighting, high-end commercial aesthetic, empty center space." (完全不提及商品，只描述舞台)
-   - **錯誤示範 ❌**: "A green luggage strap with hot air balloon patterns resting on a vintage suitcase..." (絕對禁止！會導致實體商品變形與商標錯亂)
+3. **prompt_en**: 英文繪圖指令（30-80 字），**這非常重要，請遵守以下規範**：
+   - 請以中立、客觀的簡短詞彙帶出商品本體（例如：A luggage strap, A clean skincare bottle），接著將重點放在描述**場景、留白、光影**與**氛圍**。
+   - **絕對不可**為產品發明原本不存在的圖案（如熱氣球、印花）或改變原本的設計外觀。專注於完美融合參考圖與背景。
+   - **正確示範 ✅**: "A smart luggage strap lying on a clean minimalist marble table top, soft morning sunlight casting gentle long shadows from the left, blurred green plants in the distance, neutral cinematic lighting, empty center space."
+   - **錯誤示範 ❌**: "A green luggage strap with hot air balloon patterns resting on a vintage suitcase..." (禁止自己發明特定圖案，這會造成參考圖融合失敗)
 5. **suggestedRatio**: 建議比例（從 "16:9", "1:1", "4:3", "3:4" 中選擇）
 
 **--- 視覺一致性要求 ---**

@@ -42,7 +42,7 @@ const LandingPageImageCard: React.FC<LandingPageImageCardProps> = ({
   const effectiveRefImage = refImage || defaultRefImage;
 
   const handleGenerate = async () => {
-    await generateImage(editText, aspectRatio, effectiveRefImage || undefined);
+    await generateImage(editText, aspectRatio, effectiveRefImage || undefined, 'phase5');
   };
 
   const handleRefImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

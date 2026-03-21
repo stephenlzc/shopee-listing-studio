@@ -143,24 +143,30 @@ export const generateContentPlan = async (
 export const generateMarketingImage = async (
   prompt: string,
   referenceImageBase64?: string,
-  aspectRatio: '1:1' | '9:16' | '3:4' | '4:3' | '16:9' = '3:4'
+  aspectRatio: '1:1' | '9:16' | '3:4' | '4:3' | '16:9' = '3:4',
+  generationContext: 'phase2' | 'phase5' = 'phase2'
 ): Promise<string> => {
   return safeApiCall(async () => {
     const ai = createClient();
 
     let enhancedPrompt = prompt;
     if (referenceImageBase64) {
-      // 強化參考圖指令，強調顏色與細節的重現
-      const referenceLead = 'Reference image provided: Extract the product\'s exact shape, logo placement, and brand identity. IMPORTANT: You MUST use the product\'s actual colors, textures, and materials from the EXACT product shown in the reference image. DO NOT generate a generic white or gray placeholder. Compose a new marketing visual using the following creative direction:\n\n';
-      try {
-        const colors = await extractImageColors(referenceImageBase64);
-        const colorFragment = colorToPromptFragment(colors);
-        enhancedPrompt = colorFragment
-          ? `${referenceLead}${colorFragment}\n\n${prompt}`
-          : `${referenceLead}${prompt}`;
-      } catch (colorError) {
-        console.warn('顏色提取失敗，使用原始提示詞:', colorError);
+      if (generationContext === 'phase5') {
+        const referenceLead = 'Please seamlessly integrate the product from the reference image into the following scene: ';
         enhancedPrompt = `${referenceLead}${prompt}`;
+      } else {
+        // 強化參考圖指令，強調顏色與細節的重現
+        const referenceLead = 'Reference image provided: Extract the product\'s exact shape, logo placement, and brand identity. IMPORTANT: You MUST use the product\'s actual colors, textures, and materials from the EXACT product shown in the reference image. DO NOT generate a generic white or gray placeholder. Compose a new marketing visual using the following creative direction:\n\n';
+        try {
+          const colors = await extractImageColors(referenceImageBase64);
+          const colorFragment = colorToPromptFragment(colors);
+          enhancedPrompt = colorFragment
+            ? `${referenceLead}${colorFragment}\n\n${prompt}`
+            : `${referenceLead}${prompt}`;
+        } catch (colorError) {
+          console.warn('顏色提取失敗，使用原始提示詞:', colorError);
+          enhancedPrompt = `${referenceLead}${prompt}`;
+        }
       }
     }
 
@@ -170,7 +176,11 @@ export const generateMarketingImage = async (
     }
 
     // 負面提示詞
-    enhancedPrompt += '\n\nAvoid: watermarks, low quality, blurry, distorted text, multiple products in frame, cluttered composition, stock photo aesthetic, altered product design, deformed shape, fake logo, hallucinated patterns, changing the product\'s original appearance.';
+    if (generationContext === 'phase5') {
+      enhancedPrompt += '\n\nAvoid: altered product design, deformed shape, fake logo, hallucinated patterns.';
+    } else {
+      enhancedPrompt += '\n\nAvoid: watermarks, low quality, blurry, distorted text, multiple products in frame, cluttered composition, stock photo aesthetic, altered product design, deformed shape, fake logo, hallucinated patterns, changing the product\'s original appearance.';
+    }
 
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [];
 
