@@ -39,6 +39,7 @@ export interface ContentItem {
 
 export interface ContentPlan {
   plan_name: string;
+  reference_analysis_summary?: string;
   items: ContentItem[];
 }
 

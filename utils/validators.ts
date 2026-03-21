@@ -49,6 +49,7 @@ export const ContentItemSchema = z.object({
 // ContentPlan Schema - 使用更寬鬆的驗證
 export const ContentPlanSchema = z.object({
   plan_name: z.string().min(1).max(200), // 放寬長度限制
+  reference_analysis_summary: z.string().optional().default(''),
   items: z.array(ContentItemSchema).min(1).max(20), // 允許 1-20 個項目，不強制恰好 8 個
 });
 

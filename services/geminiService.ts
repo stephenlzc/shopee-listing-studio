@@ -332,6 +332,12 @@ export const generateContentStrategy = async (
       imageMappingText = '\n\n' + lines.join('\n') + '\n\n請在生成提示詞時，根據內容主題智能選擇合適的圖片，並在提示詞中明確指定圖片檔名。';
     }
 
+    const marketSummary = `
+      - 核心層面: ${marketAnalysis.productCoreValue.mainFeatures.join(', ')} / 解決痛點: ${marketAnalysis.productCoreValue.painPointsSolved.join(', ')}
+      - 定位與趨勢: ${marketAnalysis.marketPositioning.searchTrends.join(', ')}
+      - 目標買家: ${marketAnalysis.buyerPersonas.map(p => p.name).join(', ')}
+    `;
+
     const promptText = `
       產品名稱: ${productName}
       
@@ -341,10 +347,9 @@ export const generateContentStrategy = async (
       - 副標題: ${selectedRoute.subhead_zh}
       - 視覺風格: ${selectedRoute.style_brief_zh}
       
-      市場分析結果:
-      ${JSON.stringify(marketAnalysis, null, 2)}${imageMappingText}
+      市場分析摘要: ${marketSummary}${imageMappingText}
       
-      請根據以上市場分析結果生成專業的內容策略與 SEO 優化方案 (JSON)。
+      請根據以上市場分析摘要生成專業的內容策略與 SEO 優化方案 (JSON)。
     `;
 
     const response = await retryWithBackoff(async () => {
