@@ -339,6 +339,7 @@ const App: React.FC = () => {
           inputErrors={inputErrors}
           appState={appState}
           contentPlan={contentPlan}
+          productImageBase64={imagePreview || undefined}
           onRefCopyChange={(val) => {
             setRefCopy(val);
             if (inputErrors.refCopy) setInputErrors({ ...inputErrors, refCopy: undefined });

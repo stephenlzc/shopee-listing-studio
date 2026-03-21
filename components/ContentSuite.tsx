@@ -13,6 +13,7 @@ interface ContentSuiteProps {
   onPlanUpdate: (updatedItems: ContentItem[]) => void; // Callback to update parent with edited text
   onDownloadReport?: () => void; // Callback for download report button
   onImagesGenerated?: (generatedImages: Map<string, string>) => void; // Callback when images are generated
+  productImageBase64?: string; // 使用者上傳的產品原圖，作為預設參考圖
 }
 
 // --- SUB-COMPONENT: Script Editor Row ---
@@ -71,7 +72,8 @@ const ProductionCard: React.FC<{
   item: ContentItem;
   index: number; // 在 items 陣列中的索引
   onImageChange?: (itemId: string, imageData: string | null) => void;
-}> = ({ item, index, onImageChange }) => {
+  defaultRefImage?: string; // 產品原圖作為預設參考圖
+}> = ({ item, index, onImageChange, defaultRefImage }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [storyAspectRatio, setStoryAspectRatio] = useState<'9:16' | '16:9'>('9:16');
@@ -90,8 +92,11 @@ const ProductionCard: React.FC<{
     }
   }, [image, item.id, onImageChange]);
 
+  // 使用使用者手動上傳的參考圖，若無則自動使用產品原圖
+  const effectiveRefImage = refImage || defaultRefImage;
+
   const handleGenerate = async () => {
-    await generateImage(item.visual_prompt_en, actualRatio, refImage || undefined);
+    await generateImage(item.visual_prompt_en, actualRatio, effectiveRefImage || undefined);
   };
 
   const handleRefUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,11 +189,11 @@ const ProductionCard: React.FC<{
                     <input type="file" ref={fileInputRef} onChange={handleRefUpload} className="hidden" accept="image/*" />
                     <button 
                         onClick={() => refImage ? handleClearRefImage() : fileInputRef.current?.click()}
-                        className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded border transition-colors ${refImage ? 'border-red-500/50 text-red-400 hover:bg-red-900/20' : 'border-gray-600 text-gray-500 hover:text-white hover:border-gray-400'}`}
-                        title={refImage ? "移除參考圖" : "上傳參考圖 (Logo/風格)"}
+                        className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded border transition-colors ${refImage ? 'border-red-500/50 text-red-400 hover:bg-red-900/20' : defaultRefImage ? 'border-green-500/50 text-green-400' : 'border-gray-600 text-gray-500 hover:text-white hover:border-gray-400'}`}
+                        title={refImage ? "移除自訂參考圖" : defaultRefImage ? "已自動使用產品原圖，點擊可替換" : "上傳參考圖 (Logo/風格)"}
                     >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        {refImage ? '已參考' : '參考圖'}
+                        {refImage ? '已參考' : defaultRefImage ? '產品圖' : '參考圖'}
                     </button>
                 </div>
             </div>
@@ -249,7 +254,7 @@ const ProductionCard: React.FC<{
 };
 
 // --- MAIN COMPONENT ---
-export const ContentSuite: React.FC<ContentSuiteProps> = ({ plan, onPlanUpdate, onDownloadReport, onImagesGenerated }) => {
+export const ContentSuite: React.FC<ContentSuiteProps> = ({ plan, onPlanUpdate, onDownloadReport, onImagesGenerated, productImageBase64 }) => {
   const [mode, setMode] = useState<'review' | 'production'>('review');
   const [items, setItems] = useState<ContentItem[]>(plan.items);
   // 追蹤所有已生成的圖片：Map<itemId, base64ImageData>
@@ -434,7 +439,8 @@ export const ContentSuite: React.FC<ContentSuiteProps> = ({ plan, onPlanUpdate, 
                                     key={item.id} 
                                     item={item} 
                                     index={globalIndex >= 0 ? globalIndex : idx}
-                                    onImageChange={handleImageChange} 
+                                    onImageChange={handleImageChange}
+                                    defaultRefImage={productImageBase64}
                                 />
                             );
                         })}
@@ -455,7 +461,8 @@ export const ContentSuite: React.FC<ContentSuiteProps> = ({ plan, onPlanUpdate, 
                                     key={item.id} 
                                     item={item} 
                                     index={globalIndex >= 0 ? globalIndex : idx}
-                                    onImageChange={handleImageChange} 
+                                    onImageChange={handleImageChange}
+                                    defaultRefImage={productImageBase64}
                                 />
                             );
                         })}

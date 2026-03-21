@@ -9,6 +9,7 @@ interface Phase2SectionProps {
   inputErrors: { refCopy?: string };
   appState: AppState;
   contentPlan: ContentPlan | null;
+  productImageBase64?: string;
   onRefCopyChange: (value: string) => void;
   onGeneratePlan: () => void;
   onPlanUpdate: (items: ContentItem[]) => void;
@@ -22,6 +23,7 @@ export const Phase2Section: React.FC<Phase2SectionProps> = ({
   inputErrors,
   appState,
   contentPlan,
+  productImageBase64,
   onRefCopyChange,
   onGeneratePlan,
   onPlanUpdate,
@@ -88,6 +90,7 @@ export const Phase2Section: React.FC<Phase2SectionProps> = ({
             onPlanUpdate={onPlanUpdate}
             onDownloadReport={onDownloadReport}
             onImagesGenerated={onImagesGenerated}
+            productImageBase64={productImageBase64}
           />
         </div>
       )}
