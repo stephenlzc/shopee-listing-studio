@@ -313,131 +313,58 @@ export const CONTENT_STRATEGIST_SYSTEM_PROMPT = `
 **1. 內容主題 (ContentTopic[]) - 3 個主題**
 每個主題包含：
 *   **title**: 主題標題（10-20 字）
-*   **description**: 主題描述（100-200 字，說明這個主題的內容方向、目標、價值）
-*   **focusKeyword**: 主要關鍵字（1-3 個字，核心 SEO 關鍵字）
-*   **longTailKeywords**: 長尾關鍵字（5-8 個，更具體的搜尋關鍵字）
-*   **seoGuidance**: SEO 指導
-    *   **keywordDensity**: 關鍵字密度建議（例如："2-3%"）
-    *   **semanticKeywords**: 語意關鍵字（5-8 個，與主要關鍵字語意相關的詞彙）
-    *   **internalLinks**: 內部連結策略（3-5 個建議連結的頁面或內容）
-    *   **externalLinks**: 外部連結策略（3-5 個建議連結的外部資源或權威網站）
+*   **description**: 主題描述（100-200 字）
+*   **focusKeyword**: 主要關鍵字（1-3 個字）
+*   **longTailKeywords**: 長尾關鍵字（5-8 個）
+*   **seoGuidance**: SEO 指導（keywordDensity, semanticKeywords, internalLinks, externalLinks）
 
-**2. 互動元素建議 (InteractiveElement[]) - 2-3 個建議**
-每個互動元素包含：
-*   **type**: 類型（例如：問卷調查、互動式圖表、產品比較工具、計算器）
-*   **description**: 描述（50-100 字，說明這個互動元素的功能、目的、如何提升使用者參與度）
+**2. 互動元素建議 (interactiveElements: {type: string, description: string}[]) - 2 個**
+*   建議 2 個具備參與感的互動元素（類型與 50-100 字描述）
 
-**3. 行動呼籲文案 (CTA Suggestions: string[]) - 3 個**
-*   3 個自然且具說服力的 CTA 文案（每個 5-15 字）
-*   必須符合目標客群的語言習慣與消費心理
+**3. 行動呼籲文案 (ctaSuggestions: string[]) - 3 個**
+*   生成 3 個具備說服力的 CTA 文案 (5-15 字)
 
 **4. AI Studio 生成提示詞 (aiStudioPrompts: string[]) - 3 個**
-*   為每個內容主題生成一個適用於 Google AI Studio 的詳細提示詞
-*   提示詞必須包含：
-    *   明確的技術要求（React + Tailwind CSS）
-    *   頁面結構與佈局要求（Header、Hero Section、Features、Testimonials、CTA、Footer）
-    *   **CTA 自動融合要求**：必須從上述「3. 行動呼籲文案」中挑選最合適的一個，將其完整嵌入提示詞的 CTA 區塊說明中，例如：「在 CTA Section 使用『立即體驗 [產品名稱]』作為主要按鈕文字」。
-    *   內容區塊與互動元素（詳細描述每個區塊的內容、樣式、互動效果）
-    *   視覺風格與品牌一致性（色彩、字體、間距、動畫效果）
-    *   SEO 優化要求（標題、描述、結構化資料、Open Graph）
-    *   響應式設計要求（Mobile、Tablet、Desktop 斷點）
-    *   **內容豐富度要求**：必須包含豐富的內容區塊，例如：產品特色介紹、使用場景、客戶證言、常見問題、相關產品推薦等
-    *   **圖片引用要求**：如果提供了 Phase 2 圖片檔名映射，請在提示詞中明確指定要使用的圖片檔名
-        *   例如：在 Hero Section 使用 "main-white_1x1_01_product.png" 作為產品主圖
-        *   在 Features Section 使用 "story-features_9x16_06_features.png" 作為功能展示圖
-        *   確保圖片檔名與內容主題相關，並明確說明圖片在頁面中的位置與用途
-*   每個提示詞 500-800 字（要求內容豐富、描述詳細）
+*   **關鍵目標**：指示另一個 AI (Gemini 2.0 Web Agent) 根據主題生成一個完整的 React + Tailwind CSS 網頁原始碼
+*   提示詞約 400-500 字，必須包含：
+    *   頁面佈局與結構（Hero, Feature, CTA, Footer）
+    *   所有文字內容需求（標題、賣點、CTA 文案）
+    *   視覺設計風格（與 Phase 1 一致）
+    *   Tailwind CSS 細節要求
+    *   圖片引用要求（明確指定 Phase 2 圖片檔名）
 
 **5. Gamma.app 生成提示詞 (gammaPrompts: string[]) - 3 個**
-*   為每個內容主題生成一個適用於 Gamma.app 的詳細提示詞
-*   Gamma.app 是一個簡報/網頁生成工具，支援多頁面、動畫效果、互動元素
-*   提示詞必須包含：
-    *   簡報結構（封面、目錄、內容頁面、結尾頁）
-    *   **CTA 自動融合要求**：必須從上述「3. 行動呼籲文案」中挑選最合適的一個，嵌入到結尾頁或各頁面的按鈕文案中。
-    *   每頁的內容與視覺設計要求
-    *   動畫與過場效果建議
-    *   互動元素（按鈕、連結、嵌入內容）
-    *   視覺風格與品牌一致性
-    *   內容豐富度要求（每頁都應有詳細的內容描述）
-    *   **圖片引用要求**：如果提供了 Phase 2 圖片檔名映射，請在提示詞中明確指定要使用的圖片檔名
-        *   例如：在封面頁使用 "story-hook_9x16_03_hook.png"
-        *   在產品介紹頁使用 "main-lifestyle_1x1_02_lifestyle.png"
-        *   確保圖片檔名與頁面內容相關，並明確說明圖片在頁面中的位置與用途
-*   每個提示詞 400-600 字
+*   為每個內容主題生成一個適用於 Gamma.app 的詳細提示詞（300-400 字）
 
-**--- 策略深度要求 ---**
-*   **內容主題**: 必須基於市場分析結果，針對不同買家人物誌設計，確保內容有針對性
-*   **SEO 策略**: 必須基於搜尋趨勢與關鍵字分析，確保關鍵字選擇符合目標市場
-*   **互動元素**: 必須能夠提升使用者參與度，符合目標客群的使用習慣
-*   **CTA 文案**: 必須自然且具說服力，符合目標市場的語言習慣
-*   **AI Studio 提示詞**: 必須詳細且具體，確保生成的網頁符合專業標準
+**--- 輸出安全性與穩定性要求 ---**
+1. **JSON 格式**: 必須輸出合法的 JSON，嚴禁包含額外解釋文字。
+2. **字元轉義**: 務必對引號 (\")、反斜線 (\\) 與換行符號進行正確的 JSON 轉義，特別是針對 React 程式碼描述。
+3. **長度控制**: 請確保單個提示詞不要過長，以避免 JSON 整體大小超過 API 輸出限制（建議總長度控制在 8000 字元內）。
 
 **--- 輸出格式 (JSON ONLY) ---**
 
 {
   "contentTopics": [
     {
-      "title": "主題標題（10-20 字）",
-      "description": "主題描述（100-200 字）",
-      "focusKeyword": "主要關鍵字",
-      "longTailKeywords": ["長尾關鍵字1", "長尾關鍵字2", "長尾關鍵字3"],
+      "title": "...",
+      "description": "...",
+      "focusKeyword": "...",
+      "longTailKeywords": ["...", "..."],
       "seoGuidance": {
         "keywordDensity": "2-3%",
-        "semanticKeywords": ["語意關鍵字1", "語意關鍵字2", "語意關鍵字3"],
-        "internalLinks": ["內部連結1", "內部連結2", "內部連結3"],
-        "externalLinks": ["外部連結1", "外部連結2", "外部連結3"]
-      }
-    },
-    {
-      "title": "主題標題（10-20 字）",
-      "description": "主題描述（100-200 字）",
-      "focusKeyword": "主要關鍵字",
-      "longTailKeywords": ["長尾關鍵字1", "長尾關鍵字2", "長尾關鍵字3"],
-      "seoGuidance": {
-        "keywordDensity": "2-3%",
-        "semanticKeywords": ["語意關鍵字1", "語意關鍵字2", "語意關鍵字3"],
-        "internalLinks": ["內部連結1", "內部連結2", "內部連結3"],
-        "externalLinks": ["外部連結1", "外部連結2", "外部連結3"]
-      }
-    },
-    {
-      "title": "主題標題（10-20 字）",
-      "description": "主題描述（100-200 字）",
-      "focusKeyword": "主要關鍵字",
-      "longTailKeywords": ["長尾關鍵字1", "長尾關鍵字2", "長尾關鍵字3"],
-      "seoGuidance": {
-        "keywordDensity": "2-3%",
-        "semanticKeywords": ["語意關鍵字1", "語意關鍵字2", "語意關鍵字3"],
-        "internalLinks": ["內部連結1", "內部連結2", "內部連結3"],
-        "externalLinks": ["外部連結1", "外部連結2", "外部連結3"]
+        "semanticKeywords": ["...", "..."],
+        "internalLinks": ["...", "..."],
+        "externalLinks": ["...", "..."]
       }
     }
   ],
   "interactiveElements": [
-    {
-      "type": "互動元素類型",
-      "description": "描述（50-100 字）"
-    },
-    {
-      "type": "互動元素類型",
-      "description": "描述（50-100 字）"
-    }
+    { "type": "...", "description": "..." },
+    { "type": "...", "description": "..." }
   ],
-  "ctaSuggestions": [
-    "CTA 文案1（5-15 字）",
-    "CTA 文案2（5-15 字）",
-    "CTA 文案3（5-15 字）"
-  ],
-  "aiStudioPrompts": [
-    "AI Studio 提示詞1（500-800 字，詳細描述 React + Tailwind CSS 網頁生成要求，內容必須豐富）",
-    "AI Studio 提示詞2（500-800 字，詳細描述 React + Tailwind CSS 網頁生成要求，內容必須豐富）",
-    "AI Studio 提示詞3（500-800 字，詳細描述 React + Tailwind CSS 網頁生成要求，內容必須豐富）"
-  ],
-  "gammaPrompts": [
-    "Gamma.app 提示詞1（400-600 字，詳細描述簡報結構、頁面內容、動畫效果）",
-    "Gamma.app 提示詞2（400-600 字，詳細描述簡報結構、頁面內容、動畫效果）",
-    "Gamma.app 提示詞3（400-600 字，詳細描述簡報結構、頁面內容、動畫效果）"
-  ]
+  "ctaSuggestions": ["...", "...", "..."],
+  "aiStudioPrompts": ["...", "...", "..."],
+  "gammaPrompts": ["...", "...", "..."]
 }
 `;
 
