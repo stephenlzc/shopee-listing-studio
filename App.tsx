@@ -43,6 +43,7 @@ const App: React.FC = () => {
 
   // --- Phase 3 & 4 Data ---
   const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysis | null>(null);
+  const [marketRegion, setMarketRegion] = useState<string>("台灣");
   const [contentStrategy, setContentStrategy] = useState<ContentStrategy | null>(null);
 
   // --- UI State ---
@@ -185,7 +186,7 @@ const App: React.FC = () => {
 
     try {
       const selectedRoute = analysisResult.marketing_routes[activeRouteIndex];
-      const analysis = await generateMarketAnalysis(productName, selectedRoute, imagePreview);
+      const analysis = await generateMarketAnalysis(productName, selectedRoute, imagePreview, marketRegion);
       setMarketAnalysis(analysis);
       setAppState(AppState.MARKET_READY);
     } catch (e) {
@@ -356,6 +357,8 @@ const App: React.FC = () => {
             appState={appState}
             marketAnalysis={marketAnalysis}
             productName={productName}
+            region={marketRegion}
+            onRegionChange={setMarketRegion}
             onGenerateMarketAnalysis={handleGenerateMarketAnalysis}
             onDownloadPhase3Report={handleDownloadPhase3Report}
           />

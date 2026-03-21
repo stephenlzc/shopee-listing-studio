@@ -258,12 +258,16 @@ export const generateFullReport = (
 export const generateMarketAnalysis = async (
   productName: string,
   selectedRoute: MarketingRoute,
-  productImageBase64: string
+  productImageBase64: string,
+  region: string = "台灣"
 ): Promise<MarketAnalysis> => {
   return safeApiCall(async () => {
     const ai = createClient();
+    const currentDate = new Date().toLocaleDateString('zh-TW');
 
     const promptText = `
+      現在日期: ${currentDate}
+      目標分析區域: ${region}
       產品名稱: ${productName}
       
       選定的行銷策略路線:
@@ -274,7 +278,12 @@ export const generateMarketAnalysis = async (
       - 目標客群: ${selectedRoute.target_audience_zh || '未指定'}
       - 視覺元素: ${selectedRoute.visual_elements_zh || '未指定'}
       
-      請根據以上資訊生成完整的市場分析報告 (JSON)。
+      【重要執行指令】
+      1. 請務必使用 Google Search 搜尋功能，檢索關於「${productName}」在「${region}」市場的最新競品動態與市場趨勢。
+      2. 競爭對手分析必須包含真實存在的品牌，並標註其在 ${currentDate} 附近的最新行銷動作。
+      3. 搜尋趨勢必須符合 ${region} 使用者的語言動態與搜尋習慣。
+      
+      請根據以上資訊與搜尋結果，生成完整的市場分析報告 (JSON)。
     `;
 
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [{ text: promptText }];
