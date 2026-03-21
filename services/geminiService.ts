@@ -146,7 +146,8 @@ export const generateMarketingImage = async (
 
     let enhancedPrompt = prompt;
     if (referenceImageBase64) {
-      const referenceLead = 'Reference image provided: Extract the product\'s exact shape, logo placement, and brand identity. Use the product\'s actual colors and materials from the reference. Compose a new marketing visual using the following creative direction:\n\n';
+      // 強化參考圖指令，強調顏色與細節的重現
+      const referenceLead = 'Reference image provided: Extract the product\'s exact shape, logo placement, and brand identity. IMPORTANT: You MUST use the product\'s actual colors, textures, and materials from the EXACT product shown in the reference image. DO NOT generate a generic white or gray placeholder. Compose a new marketing visual using the following creative direction:\n\n';
       try {
         const colors = await extractImageColors(referenceImageBase64);
         const colorFragment = colorToPromptFragment(colors);

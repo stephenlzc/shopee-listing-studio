@@ -9,12 +9,13 @@ import { downloadSingleImage } from '../utils/imageDownloader';
 interface PromptCardProps {
   data: PromptData;
   index: number;
+  defaultRefImage?: string; // 產品原圖作為預設參考圖
 }
 
-export const PromptCard: React.FC<PromptCardProps> = ({ data, index }) => {
+export const PromptCard: React.FC<PromptCardProps> = ({ data, index, defaultRefImage }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [promptText, setPromptText] = useState(data.prompt_en);
-  const [aspectRatio, setAspectRatio] = useState<'3:4' | '4:3' | '9:16' | '16:9'>('3:4');
+  const [aspectRatio, setAspectRatio] = useState<'1:1' | '3:4' | '4:3' | '9:16' | '16:9'>('3:4');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -31,8 +32,11 @@ export const PromptCard: React.FC<PromptCardProps> = ({ data, index }) => {
     setAspectRatio('3:4');
   }, [data, clearImage, clearRefImage]);
 
+  // 使用使用者手動上傳的參考圖，若無則自動使用產品原圖
+  const effectiveRefImage = refImage || defaultRefImage;
+
   const handleGenerate = async () => {
-    await generateImage(promptText, aspectRatio, refImage || undefined);
+    await generateImage(promptText, aspectRatio, effectiveRefImage || undefined);
   };
 
   const handleRefImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,11 +137,11 @@ export const PromptCard: React.FC<PromptCardProps> = ({ data, index }) => {
             <input type="file" ref={fileInputRef} onChange={handleRefImageUpload} className="hidden" accept="image/*" />
             <button 
               onClick={() => refImage ? handleClearRefImage() : fileInputRef.current?.click()}
-              className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded border transition-colors ${refImage ? 'border-red-500/50 text-red-400 hover:bg-red-900/20' : 'border-gray-600 text-gray-500 hover:text-white hover:border-gray-400'}`}
-              title={refImage ? "移除參考圖" : "上傳參考圖 (Logo/風格)"}
+              className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded border transition-colors ${refImage ? 'border-red-500/50 text-red-400 hover:bg-red-900/20' : defaultRefImage ? 'border-green-500/50 text-green-400' : 'border-gray-600 text-gray-500 hover:text-white hover:border-gray-400'}`}
+              title={refImage ? "移除參考圖" : defaultRefImage ? "已自動使用產品原圖，點擊可替換" : "上傳參考圖 (Logo/風格)"}
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              {refImage ? '已參考' : '參考圖'}
+              {refImage ? '已參考' : defaultRefImage ? '產品圖' : '參考圖'}
             </button>
           </div>
         </div>

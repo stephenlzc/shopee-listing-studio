@@ -176,7 +176,7 @@ const hexToSemanticColor = (r: number, g: number, b: number): string => {
     if (brightness < 100) return 'dark gray';
     if (brightness < 180) return 'gray';
     if (brightness < 230) return 'light gray';
-    return 'white';
+    return 'white-bg-candidate'; // 標記為背景候選
   }
   
   // 有色相
@@ -213,17 +213,31 @@ export const colorToPromptFragment = (colors: {
     return '';
   }
 
-  // 將 hex 轉為語意顏色名稱
-  const semanticColors = colors.dominantColors.map(hex => {
-    const match = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-    if (!match) return hex;
-    return hexToSemanticColor(parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16));
-  });
+  // 將 hex 轉為語意顏色名稱，並過濾掉背景色候選
+  const semanticColors = colors.dominantColors
+    .map(hex => {
+      const match = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+      if (!match) return hex;
+      return hexToSemanticColor(parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16));
+    })
+    .filter(name => name !== 'white-bg-candidate'); // 排除白色/淺灰色背景干擾
+
+  // 如果過濾後沒剩餘顏色（例如產品本身就是白色），則恢復使用原始顏色（但排除重複）
+  const finalColors = semanticColors.length > 0 
+    ? semanticColors 
+    : [...new Set(colors.dominantColors.map(hex => {
+        const match = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        if (!match) return 'white';
+        return hexToSemanticColor(parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16)).replace('-bg-candidate', '');
+      }))];
 
   // 去除重複
-  const uniqueColors = [...new Set(semanticColors)];
+  const uniqueColors = [...new Set(finalColors)];
   const colorList = uniqueColors.join(', ');
-  return `Product color palette from reference: ${colorList}. Use these tones for the product; maintain color consistency with the reference.`;
+  
+  if (!colorList) return '';
+
+  return `Core product colors from reference: ${colorList}. Ensure the product maintains these EXACT colors and textures. DO NOT default to white unless it is specifically part of the product design.`;
 };
 
 

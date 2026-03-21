@@ -329,7 +329,12 @@ const App: React.FC = () => {
         {/* Phase 1 Concept Posters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {activeRoute.image_prompts.map((promptItem, idx) => (
-            <PromptCard key={`p1-${activeRouteIndex}-${idx}`} data={promptItem} index={idx} />
+            <PromptCard 
+              key={`p1-${activeRouteIndex}-${idx}`} 
+              data={promptItem} 
+              index={idx} 
+              defaultRefImage={imagePreview || undefined}
+            />
           ))}
         </div>
 
