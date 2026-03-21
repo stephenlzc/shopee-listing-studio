@@ -163,6 +163,46 @@ const getSaturation = (r: number, g: number, b: number): number => {
 };
 
 /**
+ * Hex 顏色轉語意英文名稱
+ */
+const hexToSemanticColor = (r: number, g: number, b: number): string => {
+  const brightness = (r + g + b) / 3;
+  const hue = getColorHue(r, g, b);
+  const saturation = getSaturation(r, g, b);
+  
+  // 低飽和度：灰階
+  if (saturation < 15) {
+    if (brightness < 40) return 'black';
+    if (brightness < 100) return 'dark gray';
+    if (brightness < 180) return 'gray';
+    if (brightness < 230) return 'light gray';
+    return 'white';
+  }
+  
+  // 有色相
+  let colorName = '';
+  if (hue >= 0 && hue < 15) colorName = 'red';
+  else if (hue >= 15 && hue < 40) colorName = 'orange-red';
+  else if (hue >= 40 && hue < 55) colorName = 'orange';
+  else if (hue >= 55 && hue < 75) colorName = 'golden yellow';
+  else if (hue >= 75 && hue < 100) colorName = 'yellow';
+  else if (hue >= 100 && hue < 140) colorName = 'yellow-green';
+  else if (hue >= 140 && hue < 170) colorName = 'green';
+  else if (hue >= 170 && hue < 200) colorName = 'teal';
+  else if (hue >= 200 && hue < 230) colorName = 'blue';
+  else if (hue >= 230 && hue < 260) colorName = 'indigo';
+  else if (hue >= 260 && hue < 290) colorName = 'purple';
+  else if (hue >= 290 && hue < 320) colorName = 'magenta';
+  else if (hue >= 320 && hue < 345) colorName = 'pink';
+  else colorName = 'red';
+  
+  // 加上明暗修飾
+  if (brightness < 80) return `dark ${colorName}`;
+  if (brightness > 200) return `light ${colorName}`;
+  return colorName;
+};
+
+/**
  * 將顏色資訊轉換為英文提示詞片段
  */
 export const colorToPromptFragment = (colors: {
@@ -173,8 +213,17 @@ export const colorToPromptFragment = (colors: {
     return '';
   }
 
-  const colorList = colors.dominantColors.join(', ');
-  return `Product colors from reference: ${colorList}. Prefer these for the product; avoid red for the product unless the reference clearly shows red.`;
+  // 將 hex 轉為語意顏色名稱
+  const semanticColors = colors.dominantColors.map(hex => {
+    const match = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!match) return hex;
+    return hexToSemanticColor(parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16));
+  });
+
+  // 去除重複
+  const uniqueColors = [...new Set(semanticColors)];
+  const colorList = uniqueColors.join(', ');
+  return `Product color palette from reference: ${colorList}. Use these tones for the product; maintain color consistency with the reference.`;
 };
 
 

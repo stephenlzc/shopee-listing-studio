@@ -146,7 +146,7 @@ export const generateMarketingImage = async (
 
     let enhancedPrompt = prompt;
     if (referenceImageBase64) {
-      const referenceLead = 'Use the reference image for product appearance, colors, and any logo or text on the product. Compose the scene freely from the prompt below.\n\n';
+      const referenceLead = 'Reference image provided: Extract the product\'s exact shape, logo placement, and brand identity. Use the product\'s actual colors and materials from the reference. Compose a new marketing visual using the following creative direction:\n\n';
       try {
         const colors = await extractImageColors(referenceImageBase64);
         const colorFragment = colorToPromptFragment(colors);
@@ -159,12 +159,13 @@ export const generateMarketingImage = async (
       }
     }
 
+    // 語言指令（合併為單一指令）
     if (isChineseMode()) {
-      const hasTextRenderInstruction = /render\s+text|display\s+text|text\s+like|text\s+['"]/i.test(enhancedPrompt);
-      enhancedPrompt += hasTextRenderInstruction
-        ? '\n\nAll rendered text in Traditional Chinese.'
-        : '\n\nRendered text: Traditional Chinese only (brand names in English if applicable).';
+      enhancedPrompt += '\n\nLanguage: All rendered text must be in Traditional Chinese (繁體中文). Brand names may remain in English if applicable.';
     }
+
+    // 負面提示詞
+    enhancedPrompt += '\n\nAvoid: watermarks, low quality, blurry, distorted text, multiple products in frame, cluttered composition, stock photo aesthetic.';
 
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [];
 
