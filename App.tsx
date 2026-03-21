@@ -395,7 +395,7 @@ const App: React.FC = () => {
             </h1>
           </div>
           <div className="flex gap-4 items-center">
-            <button onClick={() => setIsGuideOpen(true)} className="text-gray-400 hover:text-white text-sm font-medium transition-colors">功能導覽 v1.02</button>
+            <button onClick={() => setIsGuideOpen(true)} className="text-gray-400 hover:text-white text-sm font-medium transition-colors">功能導覽 v1.2</button>
 
             {/* Language Mode Switcher */}
             <div className="flex items-center gap-2 bg-[#1a1a1f] rounded-lg p-1 border border-white/10">
