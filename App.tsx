@@ -235,7 +235,7 @@ const App: React.FC = () => {
   };
 
   // --- Phase 5: Landing Page Image Prompts ---
-  const handleGenerateLPImagePrompts = async () => {
+  const handleGenerateLPImagePrompts = async (selectedPromptIndex: number = 0) => {
     if (!contentStrategy || !analysisResult) return;
 
     setErrorMsg("");
@@ -244,7 +244,7 @@ const App: React.FC = () => {
 
     try {
       const selectedRoute = analysisResult.marketing_routes[activeRouteIndex];
-      const result = await generateLandingPageImagePrompts(contentStrategy, productName, selectedRoute);
+      const result = await generateLandingPageImagePrompts(contentStrategy, productName, selectedRoute, selectedPromptIndex);
       setLandingPageImagePrompts(result.imagePrompts);
       setAppState(AppState.LP_IMAGES_READY);
     } catch (e) {
@@ -421,6 +421,7 @@ const App: React.FC = () => {
             landingPageImagePrompts={landingPageImagePrompts}
             productName={productName}
             defaultRefImage={imagePreview || undefined}
+            contentTopics={contentStrategy?.contentTopics || []}
             onGenerateLPImagePrompts={handleGenerateLPImagePrompts}
             onPromptsUpdate={setLandingPageImagePrompts}
             onDownloadPhase5Report={handleDownloadPhase5Report}

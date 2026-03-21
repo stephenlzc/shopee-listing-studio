@@ -373,13 +373,14 @@ export const generateContentStrategy = async (
 export const generateLandingPageImagePrompts = async (
   contentStrategy: ContentStrategy,
   productName: string,
-  selectedRoute: MarketingRoute
+  selectedRoute: MarketingRoute,
+  selectedPromptIndex: number = 0
 ): Promise<LandingPageImages> => {
   return safeApiCall(async () => {
     const ai = createClient();
 
-    // 取第一個 AI Studio 提示詞作為主要參考
-    const primaryPrompt = contentStrategy.aiStudioPrompts[0] || '';
+    // 取選定的 AI Studio 提示詞作為主要參考
+    const primaryPrompt = contentStrategy.aiStudioPrompts[selectedPromptIndex] || contentStrategy.aiStudioPrompts[0] || '';
     const allPromptsSummary = contentStrategy.aiStudioPrompts
       .map((p, i) => `版本${i + 1}: ${p.substring(0, 200)}...`)
       .join('\n\n');

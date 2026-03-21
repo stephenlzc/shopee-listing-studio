@@ -22,7 +22,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ isOpen, imageUrl, onClos
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors p-2"
+          className="fixed top-4 right-4 z-[210] text-white/60 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all p-3 backdrop-blur-md"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

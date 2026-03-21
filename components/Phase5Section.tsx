@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Spinner } from './Spinner';
-import { AppState, LandingPageImagePrompt } from '../types';
+import { AppState, LandingPageImagePrompt, ContentTopic } from '../types';
 import { useImageGeneration } from '../hooks/useImageGeneration';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { ImageModal } from './ImageModal';
@@ -269,7 +269,8 @@ interface Phase5SectionProps {
   landingPageImagePrompts: LandingPageImagePrompt[];
   productName: string;
   defaultRefImage?: string;
-  onGenerateLPImagePrompts: () => void;
+  contentTopics: ContentTopic[];
+  onGenerateLPImagePrompts: (selectedPromptIndex: number) => void;
   onPromptsUpdate: (prompts: LandingPageImagePrompt[]) => void;
   onDownloadPhase5Report: () => void;
 }
@@ -279,12 +280,14 @@ export const Phase5Section: React.FC<Phase5SectionProps> = ({
   landingPageImagePrompts,
   productName,
   defaultRefImage,
+  contentTopics,
   onGenerateLPImagePrompts,
   onPromptsUpdate,
   onDownloadPhase5Report,
 }) => {
   const isGenerating = appState === AppState.GENERATING_LP_IMAGES;
   const hasPrompts = landingPageImagePrompts.length > 0;
+  const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
 
   const handlePromptChange = (index: number, newPrompt: string) => {
     const updated = [...landingPageImagePrompts];
@@ -325,13 +328,35 @@ export const Phase5Section: React.FC<Phase5SectionProps> = ({
               <p className="text-orange-400 font-medium animate-pulse">正在為 Landing Page 規劃配圖提示詞...</p>
             </div>
           ) : !hasPrompts ? (
-            <button
-              onClick={onGenerateLPImagePrompts}
-              className="px-8 py-3 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-orange-900/50 flex items-center gap-2 group"
-            >
-              <svg className="w-5 h-5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              生成 Landing Page 配圖提示詞
-            </button>
+            <div className="flex flex-col items-start gap-6">
+              <div className="bg-[#15151a] w-full p-4 rounded-xl border border-white/10">
+                <label className="block text-sm font-bold text-gray-300 mb-3">請選擇生成配圖的重點依據 (Phase 4 提示詞版本)</label>
+                <div className="flex flex-col gap-3">
+                  {contentTopics.map((topic, idx) => (
+                    <label key={idx} className={`flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer ${selectedTopicIndex === idx ? 'border-orange-500 bg-orange-500/10 shadow-lg shadow-orange-900/20' : 'border-white/5 hover:bg-white/5 hover:border-white/20'}`}>
+                      <input 
+                        type="radio" 
+                        name="topicSelection" 
+                        className="mt-1 w-4 h-4 text-orange-600 bg-gray-700 border-gray-600 focus:ring-orange-500 focus:ring-2" 
+                        checked={selectedTopicIndex === idx} 
+                        onChange={() => setSelectedTopicIndex(idx)} 
+                      />
+                      <div>
+                        <div className={`font-bold ${selectedTopicIndex === idx ? 'text-orange-400' : 'text-white'}`}>版本 {idx + 1}: {topic.title}</div>
+                        <div className="text-gray-400 text-sm mt-1">{topic.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => onGenerateLPImagePrompts(selectedTopicIndex)}
+                className="px-8 py-3 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-orange-900/50 flex items-center gap-2 group"
+              >
+                <svg className="w-5 h-5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                生成 Landing Page 配圖提示詞
+              </button>
+            </div>
           ) : (
             <div className="mt-6">
               {/* Instruction Banner */}
