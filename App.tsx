@@ -1,58 +1,79 @@
 import React, { useState, useEffect } from 'react';
-import { analyzeProductImage, generateContentPlan, generateMarketAnalysis, generateContentStrategy } from './services/geminiService';
-import { DirectorOutput, ContentItem, ContentPlan, MarketAnalysis, AppState, ContentStrategy } from './types';
+import { analyzeProductAndGenerateStrategy, generateShopeeListing } from './services/listingService';
+import { analyzeImageText } from './services/visionService';
+import { generateProductBase } from './services/baseImageService';
 import { GuideModal } from './components/GuideModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { ProductCard } from './components/ProductCard';
-import { PromptCard } from './components/PromptCard';
 import { ErrorBanner } from './components/ErrorBanner';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { InputForm } from './components/InputForm';
 import { Phase2Section } from './components/Phase2Section';
-import { Phase3Section } from './components/Phase3Section';
-import { Phase4Section } from './components/Phase4Section';
-import { Phase5Section } from './components/Phase5Section';
+import { ShopeeImageGrid } from './components/ShopeeImageGrid';
 import { DebugPromptModal } from './components/DebugPromptModal';
 import { AppError, ErrorType } from './utils/errorHandler';
-import { validateProductName, validateBrandContext, validateRefCopy } from './utils/validators';
-import { LanguageMode, getLanguageMode, setLanguageMode, isChineseMode } from './utils/languageMode';
-import { generateImageDescriptionMap } from './utils/imageMapping';
-import { generateFileNameMap } from './utils/imageNaming';
-import { generatePhase1Report, generatePhase3Report, generatePhase4Report } from './utils/reportGenerator';
-import { generateFullReport } from './services/geminiService';
+import { validateProductName, validateBrandContext } from './utils/validators';
+import { LanguageMode, getLanguageMode, setLanguageMode } from './utils/languageMode';
+import { generateShopeeListingReport } from './utils/reportGenerator';
 import { downloadTextFile } from './utils/downloadHelper';
 import { FILE_LIMITS } from './utils/constants';
+import { ShopeeAppState } from './types/shopee';
+import type {
+  DirectorOutput,
+  ShopeeListing,
+  ShopeeVisualStyle,
+  SkuOption,
+  VisionAnalysisResult,
+  BlurRegion,
+} from './types/shopee';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const LS_KEY = 'openai_api_key';
+
+// ============================================================================
+// App
+// ============================================================================
 
 const App: React.FC = () => {
   // --- Core State ---
-  const [appState, setAppState] = useState<AppState>(AppState.IDLE);
+  const [appState, setAppState] = useState<ShopeeAppState>(ShopeeAppState.IDLE);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // --- PRO Inputs ---
-  const [productName, setProductName] = useState("");
-  const [brandContext, setBrandContext] = useState("");
-  const [refCopy, setRefCopy] = useState("");
+  // --- Inputs ---
+  const [productName, setProductName] = useState('');
+  const [brandContext, setBrandContext] = useState('');
+  const [productType, setProductType] = useState('護膚');
+  const [specs, setSpecs] = useState('');
+  const [capacity, setCapacity] = useState('');
+  const [features, setFeatures] = useState<string[]>(['', '', '']);
+  const [scenario, setScenario] = useState('');
+  const [visualStyle, setVisualStyle] = useState<ShopeeVisualStyle>('gen-z-impact');
+  const [skuOptions, setSkuOptions] = useState<SkuOption[]>([]);
+  const [customNotes, setCustomNotes] = useState('');
 
   // --- Phase 1 Results ---
-  const [analysisResult, setAnalysisResult] = useState<DirectorOutput | null>(null);
+  const [directorOutput, setDirectorOutput] = useState<DirectorOutput | null>(null);
   const [activeRouteIndex, setActiveRouteIndex] = useState<number>(0);
 
-  // --- Phase 2 Data ---
-  const [contentPlan, setContentPlan] = useState<ContentPlan | null>(null);
-  const [editedPlanItems, setEditedPlanItems] = useState<ContentItem[]>([]);
-  const [phase2GeneratedImages, setPhase2GeneratedImages] = useState<Map<string, string>>(new Map());
+  // --- Phase 2 Results ---
+  const [shopeeListing, setShopeeListing] = useState<ShopeeListing | null>(null);
+  const [visionResult, setVisionResult] = useState<VisionAnalysisResult | null>(null);
 
-  // --- Phase 3 & 4 Data ---
-  const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysis | null>(null);
-  const [marketRegion, setMarketRegion] = useState<string>("台灣");
-  const [contentStrategy, setContentStrategy] = useState<ContentStrategy | null>(null);
+  // --- Preprocessing (P2) ---
+  const [processedImageBase64, setProcessedImageBase64] = useState<string | null>(null);
+  const [blurRegions, setBlurRegions] = useState<BlurRegion[]>([]);
+  const [baseImageBase64, setBaseImageBase64] = useState<string | null>(null);
+  const [baseImageGenerating, setBaseImageGenerating] = useState(false);
 
   // --- UI State ---
   const [debugModalPhase, setDebugModalPhase] = useState<number | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [errorMsg, setErrorMsg] = useState('');
   const [errorType, setErrorType] = useState<ErrorType | null>(null);
-  const [inputErrors, setInputErrors] = useState<{ productName?: string; brandContext?: string; refCopy?: string }>({});
+  const [inputErrors, setInputErrors] = useState<Record<string, string | undefined>>({});
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [hasKey, setHasKey] = useState(false);
@@ -60,16 +81,18 @@ const App: React.FC = () => {
 
   // --- Check for API Key on mount ---
   useEffect(() => {
-    const key = localStorage.getItem('gemini_api_key');
+    const key = localStorage.getItem(LS_KEY);
     if (!key) {
-      setIsKeyModalOpen(true);
+      // Hardcoded key for development
+      localStorage.setItem(LS_KEY, 'sk-sfLfU1ZDLTVC8vYt8e22A188A34a4dEf911e4eB336E932D5');
+      setHasKey(true);
     } else {
       setHasKey(true);
     }
   }, []);
 
-  // --- Error & Reset Helpers ---
-  const handleError = (e: unknown, fallbackMsg: string, fallbackState?: AppState) => {
+  // --- Error & Reset ---
+  const handleError = (e: unknown, fallbackMsg: string) => {
     console.error(e);
     if (e instanceof AppError) {
       setErrorMsg(e.userMessage);
@@ -79,12 +102,12 @@ const App: React.FC = () => {
       setErrorMsg(fallbackMsg);
       setErrorType(ErrorType.UNKNOWN);
     }
-    if (fallbackState !== undefined) setAppState(fallbackState);
+    setAppState(ShopeeAppState.ERROR);
   };
 
   const handleReset = () => {
-    setAppState(AppState.IDLE);
-    setErrorMsg("");
+    setAppState(ShopeeAppState.IDLE);
+    setErrorMsg('');
     setErrorType(null);
   };
 
@@ -100,7 +123,7 @@ const App: React.FC = () => {
       }
 
       if (!(FILE_LIMITS.ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
-        setErrorMsg(`不支援的檔案類型。請上傳 JPG、PNG 或 WebP 格式的圖片。`);
+        setErrorMsg('不支援的檔案類型。請上傳 JPG、PNG 或 WebP 格式的圖片。');
         setErrorType(ErrorType.VALIDATION);
         return;
       }
@@ -115,327 +138,189 @@ const App: React.FC = () => {
         setErrorType(ErrorType.VALIDATION);
       };
       reader.readAsDataURL(file);
-
-      // Reset results but keep inputs
-      setAnalysisResult(null);
-      setContentPlan(null);
-      setEditedPlanItems([]);
-      setAppState(AppState.IDLE);
-      setErrorMsg("");
+      setDirectorOutput(null);
+      setShopeeListing(null);
+      setVisionResult(null);
+      setAppState(ShopeeAppState.IDLE);
+      setErrorMsg('');
       setErrorType(null);
     }
   };
 
   // --- Phase 1: Analyze ---
   const handleAnalyze = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !imagePreview) return;
     if (!hasKey) { setIsKeyModalOpen(true); return; }
 
     const nameValidation = validateProductName(productName);
     const contextValidation = validateBrandContext(brandContext);
     if (!nameValidation.valid || !contextValidation.valid) {
-      setInputErrors({ productName: nameValidation.error, brandContext: contextValidation.error });
+      setInputErrors({
+        productName: nameValidation.error,
+        brandContext: contextValidation.error,
+      });
       return;
     }
 
     setInputErrors({});
-    setErrorMsg("");
+    setErrorMsg('');
     setErrorType(null);
-    setAppState(AppState.ANALYZING);
+    setAppState(ShopeeAppState.PHASE1_ANALYZING);
 
     try {
-      const result = await analyzeProductImage(selectedFile, productName, brandContext);
-      setAnalysisResult(result);
-      setAppState(AppState.RESULTS);
+      const activeFeatures = features.filter((f) => f.trim());
+      const result = await analyzeProductAndGenerateStrategy({
+        imageBase64: imagePreview,
+        productName,
+        brandContext,
+        productType,
+        features: activeFeatures.length > 0 ? activeFeatures : undefined,
+      });
+      setDirectorOutput(result);
+      setActiveRouteIndex(0);
+      setShopeeListing(null);
+      setVisionResult(null);
+      setAppState(ShopeeAppState.PHASE1_READY);
     } catch (e) {
-      handleError(e, "分析過程中發生了意外錯誤，請稍候再試。", AppState.ERROR);
+      handleError(e, '分析過程中發生了意外錯誤，請稍候再試。');
     }
   };
 
-  // --- Phase 2: Generate Plan ---
-  const handleGeneratePlan = async () => {
-    if (!analysisResult) return;
-    const route = analysisResult.marketing_routes[activeRouteIndex];
-    const analysis = analysisResult.product_analysis;
-
-    const refCopyValidation = validateRefCopy(refCopy);
-    if (!refCopyValidation.valid) {
-      setInputErrors({ refCopy: refCopyValidation.error });
-      return;
-    }
+  // --- Phase 2: Generate Listing ---
+  const handleGenerateListing = async () => {
+    if (!directorOutput || !imagePreview) return;
 
     setInputErrors({});
-    setErrorMsg("");
+    setErrorMsg('');
     setErrorType(null);
-    setAppState(AppState.PLANNING);
+    setAppState(ShopeeAppState.PHASE2_PROCESSING);
 
     try {
-      const plan = await generateContentPlan(route, analysis, refCopy, brandContext);
-      setContentPlan(plan);
-      setEditedPlanItems(plan.items);
-      setAppState(AppState.SUITE_READY);
+      const strategy = directorOutput.visualStrategies[activeRouteIndex];
+
+      // Run listing generation and vision analysis in parallel
+      const [listing, vision] = await Promise.all([
+        generateShopeeListing({
+          productName,
+          brand: brandContext,
+          productType,
+          specs,
+          capacity,
+          features: features.filter((f) => f.trim()),
+          scenario: scenario || '日常使用',
+          visualStyle,
+          selectedStrategy: {
+            strategyName: strategy.strategyName,
+            headlineZh: strategy.headlineZh,
+            styleBriefZh: strategy.styleBriefZh,
+            targetAudienceZh: strategy.targetAudienceZh,
+          },
+          skuOptions: skuOptions.length > 0 ? skuOptions : undefined,
+        }),
+        analyzeImageText({ imageBase64: imagePreview }).catch((e) => {
+          console.warn('Vision analysis failed (non-blocking):', e);
+          return null;
+        }),
+      ]);
+
+      setShopeeListing(listing);
+      setVisionResult(vision);
+      setAppState(ShopeeAppState.PHASE2_READY);
     } catch (e) {
-      handleError(e, "內容規劃失敗，請稍候再試。", AppState.RESULTS);
+      handleError(e, 'Listing 生成失敗，請稍候再試。');
     }
   };
 
-  // --- Phase 3: Market Analysis ---
-  const handleGenerateMarketAnalysis = async () => {
-    if (!analysisResult || !imagePreview) return;
-
-    setErrorMsg("");
-    setErrorType(null);
-    setAppState(AppState.ANALYZING_MARKET);
-
+  // --- Base Image Generation ---
+  const handleGenerateBaseImage = async () => {
+    if (!processedImageBase64) return;
+    setBaseImageGenerating(true);
     try {
-      const selectedRoute = analysisResult.marketing_routes[activeRouteIndex];
-      const analysis = await generateMarketAnalysis(productName, selectedRoute, imagePreview, marketRegion);
-      setMarketAnalysis(analysis);
-      setAppState(AppState.MARKET_READY);
+      const result = await generateProductBase({
+        imageBase64: processedImageBase64,
+        productName,
+      });
+      setBaseImageBase64(result.baseImageBase64);
     } catch (e) {
-      handleError(e, "市場分析失敗，請稍候再試。", AppState.SUITE_READY);
-    }
-  };
-
-  // --- Phase 4: Content Strategy ---
-  const handleGenerateContentStrategy = async () => {
-    if (!marketAnalysis) return;
-
-    setErrorMsg("");
-    setErrorType(null);
-    setAppState(AppState.ANALYZING_CONTENT);
-
-    try {
-      const selectedRoute = analysisResult!.marketing_routes[activeRouteIndex];
-
-      let imageFileNames: Map<string, string> | undefined;
-      let imageDescriptions: Map<string, string> | undefined;
-
-      if (phase2GeneratedImages.size > 0 && editedPlanItems.length > 0) {
-        const generatedImageIds = new Set(phase2GeneratedImages.keys());
-        imageFileNames = generateFileNameMap(editedPlanItems);
-        imageDescriptions = generateImageDescriptionMap(editedPlanItems, generatedImageIds);
-
-        const filteredFileNames = new Map<string, string>();
-        imageFileNames.forEach((filename, itemId) => {
-          if (generatedImageIds.has(itemId)) filteredFileNames.set(itemId, filename);
-        });
-        imageFileNames = filteredFileNames;
-      }
-
-      const strategy = await generateContentStrategy(
-        marketAnalysis, productName, selectedRoute, imageFileNames, imageDescriptions
-      );
-      setContentStrategy(strategy);
-      setAppState(AppState.CONTENT_READY);
-    } catch (e) {
-      handleError(e, "內容策略生成失敗，請稍候再試。", AppState.MARKET_READY);
+      console.error('Base image generation failed:', e);
+    } finally {
+      setBaseImageGenerating(false);
     }
   };
 
   // --- Language ---
   const handleLanguageModeChange = (mode: LanguageMode) => {
-    if (mode === LanguageMode.EN) return; // English mode is WIP
+    if (mode === LanguageMode.EN) return;
     setLanguageMode(mode);
     setLanguageModeState(mode);
   };
 
-  // --- Download Handlers (using shared utility) ---
-  const handleDownloadReport = () => {
-    if (!analysisResult || !contentPlan) return;
-    const textReport = generateFullReport(
-      analysisResult.product_analysis, analysisResult.marketing_routes,
-      activeRouteIndex, contentPlan, editedPlanItems
-    );
-    downloadTextFile(textReport, `PRO_Strategy_Report_${analysisResult.product_analysis.name.replace(/\s+/g, '_')}.txt`);
+  // --- Download ---
+  const handleDownloadListing = () => {
+    if (!shopeeListing) return;
+    const report = generateShopeeListingReport(shopeeListing, productName, directorOutput);
+    downloadTextFile(report, `Shopee_Listing_${productName.replace(/\s+/g, '_')}.txt`);
   };
 
-  const handleDownloadPhase1Report = () => {
-    if (!analysisResult) return;
-    const textReport = generatePhase1Report(analysisResult, activeRouteIndex);
-    downloadTextFile(textReport, `Phase1_視覺策略報告_${analysisResult.product_analysis.name.replace(/\s+/g, '_')}.txt`);
+  // --- Visual Style Display Name ---
+  const visualStyleLabels: Record<ShopeeVisualStyle, string> = {
+    'fresh-watery': '清新水感',
+    'creamy-soft': '奶油柔潤',
+    'clean-refreshing': '清爽潔淨',
+    'botanical-natural': '植萃自然',
+    'premium-minimal': '高級極簡',
+    'girly-sweet': '少女甜感',
+    'gentle-elegant': '溫柔優雅',
+    'bold-playful': '大膽活潑',
+    'calm-serene': '沉靜舒緩',
+    'luxury-golden': '奢華金屬',
+    'lifestyle-home': '生活居家',
+    'office-professional': '都市職場',
+    'dorm-young': '宿舍青春',
+    'gym-active': '運動活力',
+    'spa-resort': '溫泉度假',
+    'tech-transparent': '科技透明',
+    'gift-box': '禮盒質感',
+    'gen-z-impact': 'Z世代衝擊',
+    'retro-vintage': '文青復古',
+    'tropical-island': '熱帶島嶼',
   };
 
-  const handleDownloadPhase3Report = () => {
-    if (!marketAnalysis) return;
-    const textReport = generatePhase3Report(marketAnalysis, productName);
-    downloadTextFile(textReport, `Phase3_市場分析報告_${productName.replace(/\s+/g, '_')}.txt`);
-  };
+  // --- Phase Visibility ---
+  const showPhase1Results = appState === ShopeeAppState.PHASE1_READY
+    || appState === ShopeeAppState.PHASE2_PROCESSING
+    || appState === ShopeeAppState.PHASE2_READY
+    || appState === ShopeeAppState.PHASE3_GENERATING
+    || appState === ShopeeAppState.PHASE3_COMPLETE;
 
-  const handleDownloadPhase4Report = () => {
-    if (!contentStrategy) return;
-    const textReport = generatePhase4Report(contentStrategy, productName);
-    downloadTextFile(textReport, `Phase4_內容策略報告_${productName.replace(/\s+/g, '_')}.txt`);
-  };
+  const showPhase2 = appState === ShopeeAppState.PHASE2_READY
+    || appState === ShopeeAppState.PHASE3_GENERATING
+    || appState === ShopeeAppState.PHASE3_COMPLETE;
 
-  // --- Route Selection ---
-  const handleRouteChange = (idx: number) => {
-    setActiveRouteIndex(idx);
-    setContentPlan(null);
-    setEditedPlanItems([]);
-    setMarketAnalysis(null);
-    setContentStrategy(null);
-    if (appState === AppState.SUITE_READY) setAppState(AppState.RESULTS);
-  };
+  const showPhase3 = appState === ShopeeAppState.PHASE3_GENERATING
+    || appState === ShopeeAppState.PHASE3_COMPLETE;
 
-  // --- Phase visibility checks ---
-  const isPhaseResultsVisible = appState === AppState.RESULTS || appState === AppState.PLANNING ||
-    appState === AppState.SUITE_READY || appState === AppState.ANALYZING_MARKET ||
-    appState === AppState.MARKET_READY || appState === AppState.ANALYZING_CONTENT ||
-    appState === AppState.CONTENT_READY;
-
-  const isPhase3Visible = (appState === AppState.SUITE_READY || appState === AppState.ANALYZING_MARKET ||
-    appState === AppState.MARKET_READY || appState === AppState.ANALYZING_CONTENT ||
-    appState === AppState.CONTENT_READY) && contentPlan;
-
-  const isPhase4Visible = (appState === AppState.MARKET_READY || appState === AppState.ANALYZING_CONTENT ||
-    appState === AppState.CONTENT_READY) && marketAnalysis;
-
-  const isPhase5Visible = appState === AppState.CONTENT_READY && contentStrategy;
-
-  // --- Render Phase 1 Results ---
-  const renderPhase1Results = () => {
-    if (!analysisResult || !imagePreview) return null;
-    const activeRoute = analysisResult.marketing_routes[activeRouteIndex];
-
-    return (
-      <div className="w-full max-w-6xl mx-auto px-4 pb-20">
-        <ProductCard analysis={analysisResult.product_analysis} imageSrc={imagePreview} />
-
-        {/* Route Selection */}
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">1</div>
-                <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 flex-1">
-                  Phase 1: 視覺策略選擇 / Select Concept
-                </h2>
-                {analysisResult?._debugPrompt && (
-                  <button
-                    onClick={() => setDebugModalPhase(1)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-1 border border-white/5"
-                  >
-                    📝 檢視提示詞
-                  </button>
-                )}
-              </div>
-            <button
-              onClick={handleDownloadPhase1Report}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              下載策略報告
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {analysisResult.marketing_routes.map((route, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleRouteChange(idx)}
-                className={`p-4 rounded-xl border text-left transition-all duration-300 ${activeRouteIndex === idx
-                    ? 'bg-white text-black border-white scale-[1.02]'
-                    : 'bg-[#15151a] text-gray-400 border-white/5 hover:bg-[#1a1a1f]'
-                  }`}
-              >
-                <div className="text-xs font-bold uppercase opacity-70">Route {String.fromCharCode(65 + idx)}</div>
-                <div className="font-bold text-lg">{route.route_name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Phase 1 Concept Posters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          {activeRoute.image_prompts.map((promptItem, idx) => (
-            <PromptCard 
-              key={`p1-${activeRouteIndex}-${idx}`} 
-              data={promptItem} 
-              index={idx} 
-              defaultRefImage={imagePreview || undefined}
-            />
-          ))}
-        </div>
-
-        {/* Phase 2 */}
-        <Phase2Section
-          activeRoute={activeRoute}
-          refCopy={refCopy}
-          inputErrors={inputErrors}
-          appState={appState}
-          contentPlan={contentPlan}
-          productImageBase64={imagePreview || undefined}
-          onRefCopyChange={(val) => {
-            setRefCopy(val);
-            if (inputErrors.refCopy) setInputErrors({ ...inputErrors, refCopy: undefined });
-          }}
-          onGeneratePlan={handleGeneratePlan}
-          onPlanUpdate={(newItems) => setEditedPlanItems(newItems)}
-          onDownloadReport={handleDownloadReport}
-          onImagesGenerated={(images) => setPhase2GeneratedImages(images)}
-          onOpenDebug={() => setDebugModalPhase(2)}
-          debugPromptAvailable={!!contentPlan?._debugPrompt}
-        />
-
-        {/* Phase 3 */}
-        {isPhase3Visible && (
-          <Phase3Section
-          appState={appState}
-          marketAnalysis={marketAnalysis}
-          onGenerateMarketAnalysis={handleGenerateMarketAnalysis}
-          onOpenDebug={() => setDebugModalPhase(3)}
-          debugPromptAvailable={!!marketAnalysis?._debugPrompt}
-          productName={productName}
-          region={marketRegion}
-          onRegionChange={setMarketRegion}
-          onDownloadPhase3Report={handleDownloadPhase3Report}
-          />
-        )}
-
-        {/* Phase 4 */}
-        {isPhase4Visible && (
-          <Phase4Section
-          appState={appState}
-          contentStrategy={contentStrategy}
-          onGenerateContentStrategy={handleGenerateContentStrategy}
-          onOpenDebug={() => setDebugModalPhase(4)}
-          debugPromptAvailable={!!contentStrategy?._debugPrompt}
-          productName={productName}
-          onDownloadPhase4Report={handleDownloadPhase4Report}
-          />
-        )}
-
-        {/* Phase 5 */}
-        {isPhase5Visible && (
-          <Phase5Section
-          productName={productName}
-          />
-        )}
-      </div>
-    );
-  };
-
+  // --- Render ---
   return (
     <div className="min-h-screen bg-[#0f0f12] text-slate-200 selection:bg-purple-500 selection:text-white font-sans flex flex-col">
       <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
-      <ApiKeyModal isOpen={isKeyModalOpen} onSave={(key: string) => { setIsKeyModalOpen(false); setHasKey(true); }} />
+      <ApiKeyModal isOpen={isKeyModalOpen} onSave={(_key: string) => { setIsKeyModalOpen(false); setHasKey(true); }} />
 
       {/* Header */}
       <header className="w-full py-6 border-b border-white/5 bg-[#0f0f12]/90 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setAppState(AppState.IDLE)}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setAppState(ShopeeAppState.IDLE)}>
             <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-600/50">
               <span className="text-white font-bold">PM</span>
             </div>
             <h1 className="text-lg font-bold text-white hidden md:block">
-              AI Product Marketing Designer <span className="text-purple-500 text-xs align-top ml-1">PRO</span>
+              AI Product Marketing Designer <span className="text-purple-500 text-xs align-top ml-1">SHOPEE</span>
             </h1>
           </div>
           <div className="flex gap-4 items-center">
-            <button onClick={() => setIsGuideOpen(true)} className="text-gray-400 hover:text-white text-sm font-medium transition-colors">功能導覽 v0.8</button>
-
-            {/* Language Mode Switcher */}
+            <button onClick={() => setIsGuideOpen(true)} className="text-gray-400 hover:text-white text-sm font-medium transition-colors">
+              功能導覽 v0.9
+            </button>
             <div className="flex items-center gap-2 bg-[#1a1a1f] rounded-lg p-1 border border-white/10">
               <button
                 onClick={() => handleLanguageModeChange(LanguageMode.ZH_TW)}
@@ -446,14 +331,12 @@ const App: React.FC = () => {
               <button
                 onClick={() => handleLanguageModeChange(LanguageMode.EN)}
                 disabled
-                className={`px-3 py-1 rounded text-xs font-bold transition-colors relative ${languageMode === LanguageMode.EN ? 'bg-purple-600 text-white' : 'text-gray-500 cursor-not-allowed opacity-50'}`}
+                className="px-3 py-1 rounded text-xs font-bold text-gray-500 cursor-not-allowed opacity-50"
                 title="英文模式開發中"
               >
                 英文
-                <span className="absolute -top-1 -right-1 bg-yellow-500 text-[8px] text-black font-bold px-1 rounded">開發中</span>
               </button>
             </div>
-
             <button onClick={() => setIsKeyModalOpen(true)} className="text-purple-400 hover:text-purple-300 text-sm font-bold">
               {hasKey ? '更換 API Key' : '設定 API Key'}
             </button>
@@ -466,64 +349,203 @@ const App: React.FC = () => {
         <ErrorBanner errorMsg={errorMsg} errorType={errorType} onReset={handleReset} />
 
         {/* Loading States */}
-        {appState === AppState.ANALYZING && (
-          <LoadingOverlay title="AI 總監正在分析產品" description="正在解讀品牌語意與視覺特徵..." colorClass="purple" />
+        {appState === ShopeeAppState.PHASE1_ANALYZING && (
+          <LoadingOverlay title="AI 總監正在分析產品" description="正在解讀視覺特徵與生成行銷策略..." colorClass="purple" />
         )}
-        {appState === AppState.ANALYZING_MARKET && (
-          <LoadingOverlay title="Phase 3: 市場分析中" description="正在分析產品核心價值、市場定位、競爭對手與潛在客戶..." colorClass="blue" />
-        )}
-        {appState === AppState.ANALYZING_CONTENT && (
-          <LoadingOverlay title="Phase 4: 內容策略生成中" description="正在生成內容主題、SEO 策略與 AI Studio 提示詞..." colorClass="green" />
+        {appState === ShopeeAppState.PHASE2_PROCESSING && (
+          <LoadingOverlay title="正在生成蝦皮 Listing" description="正在生成 SEO 標題、產品描述、圖片 Prompt 與合規檢查..." colorClass="blue" />
         )}
 
         {/* Idle View */}
-        {appState === AppState.IDLE && (
+        {appState === ShopeeAppState.IDLE && (
           <div className="flex-1 flex flex-col items-center mt-8 text-center">
             <div className="inline-block px-3 py-1 rounded-full bg-purple-900/30 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-6">
-              v0.8
+              v0.9 — Shopee Edition
             </div>
-            <h2 className="text-4xl md:text-6xl font-bold text-white serif mb-4 leading-tight">
-              打造完整的<br />品牌視覺資產
+            <h2 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
+              台灣蝦皮<br />商品圖片生成器
             </h2>
             <p className="text-gray-400 max-w-xl mx-auto mb-8 text-lg">
-              結合產品識別、品牌故事與競品策略。<br />
-              一鍵生成廣告海報與 <span className="text-purple-400 font-bold">8 張完整的社群行銷套圖</span>。
+              一鍵生成 <span className="text-purple-400 font-bold">6 張主圖</span> + <span className="text-purple-400 font-bold">4-6 張詳情圖</span> + SKU 圖。
+              <br />包含 SEO 標題、產品描述、合規檢查。
             </p>
             <InputForm
               productName={productName}
               brandContext={brandContext}
+              productType={productType}
+              specs={specs}
+              capacity={capacity}
+              features={features}
+              scenario={scenario}
+              visualStyle={visualStyle}
+              skuOptions={skuOptions}
+              customNotes={customNotes}
               selectedFile={selectedFile}
               imagePreview={imagePreview}
               inputErrors={inputErrors}
-              appState={appState}
-              onProductNameChange={(val) => {
-                setProductName(val);
-                if (inputErrors.productName) setInputErrors({ ...inputErrors, productName: undefined });
-              }}
-              onBrandContextChange={(val) => {
-                setBrandContext(val);
-                if (inputErrors.brandContext) setInputErrors({ ...inputErrors, brandContext: undefined });
-              }}
+              hasFile={!!selectedFile}
+              onProductNameChange={(v) => { setProductName(v); if (inputErrors.productName) setInputErrors({ ...inputErrors, productName: undefined }); }}
+              onBrandContextChange={(v) => { setBrandContext(v); if (inputErrors.brandContext) setInputErrors({ ...inputErrors, brandContext: undefined }); }}
+              onProductTypeChange={setProductType}
+              onSpecsChange={setSpecs}
+              onCapacityChange={setCapacity}
+              onFeaturesChange={setFeatures}
+              onScenarioChange={setScenario}
+              onVisualStyleChange={setVisualStyle}
+              onSkuOptionsChange={setSkuOptions}
+              onCustomNotesChange={setCustomNotes}
               onFileChange={handleFileChange}
               onAnalyze={handleAnalyze}
             />
           </div>
         )}
 
-        {isPhaseResultsVisible && renderPhase1Results()}
+        {/* Phase 1 Results */}
+        {showPhase1Results && directorOutput && imagePreview && (
+          <div className="w-full max-w-6xl mx-auto px-4 pb-20">
+            {/* Product Card */}
+            <ProductCard analysis={directorOutput.productAnalysis} imageSrc={imagePreview} />
+
+            {/* Strategy Route Selection */}
+            <div className="mb-10">
+              <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">1</div>
+                <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 flex-1">
+                  Phase 1: 視覺策略選擇
+                </h2>
+                {directorOutput._debugPrompt && (
+                  <button
+                    onClick={() => setDebugModalPhase(1)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors border border-white/5"
+                  >
+                    檢視提示詞
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {directorOutput.visualStrategies.map((route, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setActiveRouteIndex(idx);
+                      setShopeeListing(null);
+                      setVisionResult(null);
+                    }}
+                    className={`p-5 rounded-xl border text-left transition-all duration-300 ${
+                      activeRouteIndex === idx
+                        ? 'bg-white text-black border-white scale-[1.02] shadow-lg'
+                        : 'bg-[#15151a] text-gray-400 border-white/5 hover:bg-[#1a1a1f]'
+                    }`}
+                  >
+                    <div className="text-xs font-bold uppercase opacity-70 mb-1">
+                      路線 {String.fromCharCode(65 + idx)} · {visualStyleLabels[route.styleCategory] || route.styleCategory}
+                    </div>
+                    <div className="font-bold text-lg mb-1">{route.headlineZh}</div>
+                    <div className="text-xs opacity-70">{route.subheadZh}</div>
+                    <div className="text-xs mt-2 opacity-50">{route.targetAudienceZh}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Phase 1 Visual Concept Previews */}
+            {directorOutput.visualStrategies[activeRouteIndex] && (
+              <div className="mb-12">
+                <h3 className="text-lg font-bold text-white mb-4">視覺策略預覽</h3>
+                <div className="bg-[#1a1a1f] border border-white/10 rounded-xl p-6">
+                  <p className="text-gray-300 text-sm mb-3">
+                    <span className="text-gray-500">視覺風格：</span>
+                    {visualStyleLabels[directorOutput.visualStrategies[activeRouteIndex].styleCategory]}
+                  </p>
+                  <p className="text-gray-300 text-sm mb-3">
+                    <span className="text-gray-500">視覺元素：</span>
+                    {directorOutput.visualStrategies[activeRouteIndex].visualElementsZh}
+                  </p>
+                  <p className="text-gray-300 text-sm">
+                    <span className="text-gray-500">風格簡述：</span>
+                    {directorOutput.visualStrategies[activeRouteIndex].styleBriefZh}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Proceed to Phase 2 */}
+            {appState === ShopeeAppState.PHASE1_READY && (
+              <div className="border-t border-white/10 pt-12">
+                <div className="bg-[#1e1e24] rounded-2xl p-8 border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">2</div>
+                    <h3 className="text-xl font-bold text-white">Phase 2: 生成蝦皮 Listing</h3>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-6">
+                    根據「{directorOutput.visualStrategies[activeRouteIndex].headlineZh}」策略，生成完整蝦皮 Listing：
+                    SEO 標題、產品描述、主圖 Prompt、詳情圖 Prompt、合規檢查。
+                  </p>
+                  <button
+                    onClick={handleGenerateListing}
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-purple-900/50"
+                  >
+                    生成 Listing
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Phase 2: Listing Review */}
+            {showPhase2 && shopeeListing && (
+              <Phase2Section
+                listing={shopeeListing}
+                visionResult={visionResult}
+                productName={productName}
+                imagePreview={imagePreview}
+                processedImageBase64={processedImageBase64}
+                blurRegions={blurRegions}
+                baseImageBase64={baseImageBase64}
+                baseImageGenerating={baseImageGenerating}
+                onImageProcessed={(base64, regions) => {
+                  setProcessedImageBase64(base64);
+                  setBlurRegions(regions);
+                  setBaseImageBase64(null);
+                }}
+                onGenerateBaseImage={handleGenerateBaseImage}
+                onDownloadReport={handleDownloadListing}
+                onProceedToPhase3={() => setAppState(ShopeeAppState.PHASE3_GENERATING)}
+                appState={appState}
+              />
+            )}
+
+            {/* Phase 3: Image Production */}
+            {showPhase3 && shopeeListing && (
+              <div className="border-t border-white/10 pt-12 mt-12">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-bold">3</div>
+                  <h2 className="text-2xl font-bold text-white">Phase 3: 圖片生產</h2>
+                </div>
+                <p className="text-gray-400 text-sm mb-8">
+                  逐張生成圖片。主圖 1024×1024，詳情圖 1024×1536。圖片生成需 30-90 秒，請耐心等候。
+                </p>
+                <ShopeeImageGrid
+                  listing={shopeeListing}
+                  productName={productName}
+                  imagePreview={baseImageBase64 || processedImageBase64 || imagePreview}
+                  onComplete={() => setAppState(ShopeeAppState.PHASE3_COMPLETE)}
+                  isComplete={appState === ShopeeAppState.PHASE3_COMPLETE}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <footer className="w-full py-6 text-center border-t border-white/5 text-xs text-gray-600">
         © 2026 <a href="https://flypigai.icareu.tw/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-purple-400 transition-colors font-bold">FlyPig AI - 艾可開發股份有限公司</a>. All rights reserved.
       </footer>
 
-      <DebugPromptModal 
+      <DebugPromptModal
         isOpen={debugModalPhase !== null}
         promptContent={
-          debugModalPhase === 1 ? analysisResult?._debugPrompt || null :
-          debugModalPhase === 2 ? contentPlan?._debugPrompt || null :
-          debugModalPhase === 3 ? marketAnalysis?._debugPrompt || null :
-          debugModalPhase === 4 ? contentStrategy?._debugPrompt || null :
+          debugModalPhase === 1 ? directorOutput?._debugPrompt || null :
+          debugModalPhase === 2 ? shopeeListing?.seoTitles[0]?.title || null :
           null
         }
         phaseName={`Phase ${debugModalPhase}`}

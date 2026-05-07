@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface GuideModalProps {
@@ -11,36 +10,32 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
-      />
-      
-      {/* Content */}
-      <div className="relative bg-[#1a1a1f] border border-white/10 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-purple-900/20 animate-in fade-in zoom-in duration-300">
-        <button 
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
+
+      <div className="relative bg-[#1a1a1f] border border-white/10 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-purple-900/20">
+        <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors p-2"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors p-2 z-10"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
 
         <div className="p-8">
-            <div className="flex items-center space-x-4">
-              <div className="h-10 w-1 bg-white/30 rounded-full" />
-              <h2 className="text-3xl font-bold serif text-white">功能導覽 v0.8</h2>
-            </div>
-          <p className="text-gray-400 text-sm mb-8">從單圖分析到全套社群行銷素材的完整生產線。</p>
+          <div className="flex items-center space-x-4 mb-2">
+            <div className="h-10 w-1 bg-white/30 rounded-full" />
+            <h2 className="text-3xl font-bold text-white">功能導覽 v0.9</h2>
+            <span className="px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold uppercase rounded">Shopee 版</span>
+          </div>
+          <p className="text-gray-400 text-sm mb-8">台灣蝦皮商品圖片生成器：從產品照片到完整 Listing 的一站式工作流。</p>
 
           <div className="space-y-8">
             {/* Step 1 */}
             <div className="flex gap-4">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-600/20 text-purple-400 flex items-center justify-center font-bold text-lg border border-purple-600/30">1</div>
               <div>
-                <h3 className="text-lg font-bold text-white mb-1">強化輸入 (Enhanced Input)</h3>
+                <h3 className="text-lg font-bold text-white mb-1">產品資訊輸入</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  除了上傳圖片，現在支援輸入 **產品名稱** 與 **品牌背景/網址**。AI 會自動讀取網址內的品牌故事，並排除無關的促銷雜訊，確保產出的文案符合品牌調性。
+                  上傳產品圖片，填寫產品名稱、品牌背景、產品類型（護膚/美妝/髮品/身體護理）、規格、容量、產品特色、適用場景，並從 <strong>20 種視覺風格</strong>中選擇最適合的風格。進階選項支援 SKU 組合與自訂備註。
                 </p>
               </div>
             </div>
@@ -49,9 +44,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             <div className="flex gap-4">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-600/30">2</div>
               <div>
-                <h3 className="text-lg font-bold text-white mb-1">Phase 1: 策略制定</h3>
+                <h3 className="text-lg font-bold text-white mb-1">Phase 1: 視覺策略制定</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  AI 總監會提供三條視覺路線。此階段您可預覽 3 張概念海報，並決定要採用哪一種策略風格進入下一階段。
+                  AI 總監分析產品圖片與資訊，生成 <strong>3 條差異化視覺行銷路線</strong>。每條路線包含策略名稱、主副標題、目標客群、視覺元素建議與對應的 20 種視覺風格。
                 </p>
               </div>
             </div>
@@ -60,88 +55,48 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             <div className="flex gap-4">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pink-600/20 text-pink-400 flex items-center justify-center font-bold text-lg border border-pink-600/30">3</div>
               <div>
-                <h3 className="text-lg font-bold text-white mb-1">Phase 2: 全套內容企劃 (Content Suite)</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-2">
-                  提供 **參考文案/競品資訊** 後，AI 會規劃一套 8 張圖的素材包：
-                </p>
+                <h3 className="text-lg font-bold text-white mb-1">Phase 2: 素材預處理 + Listing 生成</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-2">選定策略路線後，系統會同步執行：</p>
                 <ul className="list-disc list-inside text-xs text-gray-500 space-y-1 ml-1">
-                    <li><strong>2 張方形主圖</strong> (白底去背 + 情境主視覺)</li>
-                    <li><strong>6 張長圖 Stories</strong> (封面、痛點、解法、細節、背書、CTA)</li>
+                  <li><strong>圖片文字識別</strong>：自動檢測產品圖片中的文字，風險分級（高/中/低），支援勾選後批量標記模糊區域</li>
+                  <li><strong>Canvas 模糊工具</strong>：拖曳框選需遮蔽的敏感文字，匯出處理後的產品底圖</li>
+                  <li><strong>5 個 SEO 標題</strong>：每個 ≥ 50 中文字，5 種不同切入點，台灣 Gen Z 語感</li>
+                  <li><strong>產品描述 + CTA</strong>：親切大姐姐語氣，2-4 段手機友善段落</li>
+                  <li><strong>6 張主圖 Prompt</strong>（1024×1024）+ <strong>4-6 張詳情圖 Prompt</strong>（1024×1536）</li>
+                  <li><strong>合規檢查</strong>：50+ 禁用詞自動替換（美白→透亮感、抗皺→熟齡保養感 等）</li>
                 </ul>
               </div>
             </div>
 
             {/* Step 4 */}
             <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-600/20 text-yellow-400 flex items-center justify-center font-bold text-lg border border-yellow-600/30">4</div>
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center font-bold text-lg border border-green-600/30">4</div>
               <div>
-                <h3 className="text-lg font-bold text-white mb-1">審閱與製作 (Review & Production)</h3>
+                <h3 className="text-lg font-bold text-white mb-1">Phase 3: 圖片生產</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  <strong className="text-white">腳本審閱模式：</strong> 先確認 AI 寫好的 8 張圖文案與 Prompt，可自由編輯。<br/>
-                  <strong className="text-white">圖片製作模式：</strong> 逐一生成圖片。支援為每一張圖 **單獨上傳參考圖片** (例如：特定 Logo 放在最後一張 CTA)。<br/>
-                  <strong className="text-white">一鍵下載：</strong> 批次下載所有生成的圖片，自動 ZIP 打包，採用英文關鍵字命名規則。
+                  逐一生成圖片。主圖（1:1，1024×1024）、詳情圖（2:3，1024×1536）、SKU 圖（可選）。每張圖片支援單獨重新生成、放大檢視、單張下載。使用處理後的產品底圖作為所有圖片的參考，確保一致性。
                 </p>
               </div>
             </div>
 
             {/* Step 5 */}
             <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-600/30">5</div>
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-600/20 text-yellow-400 flex items-center justify-center font-bold text-lg border border-yellow-600/30">5</div>
               <div>
-                <h3 className="text-lg font-bold text-white mb-1">Phase 3: 產品市場分析</h3>
+                <h3 className="text-lg font-bold text-white mb-1">下載與匯出</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  基於 Phase 1 選定的視覺策略，生成完整的市場分析報告：產品核心價值、目標市場定位、競爭對手分析（3 個）、買家人物誌（3 個）。完成後可下載市場分析報告。
-                </p>
-              </div>
-            </div>
-
-            {/* Step 6 */}
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center font-bold text-lg border border-green-600/30">6</div>
-              <div>
-                <h3 className="text-lg font-bold text-white mb-1">Phase 4: 內容與 SEO 策略</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-2">
-                  基於 Phase 3 的分析結果，生成專業的內容策略：
-                </p>
-                <ul className="list-disc list-inside text-xs text-gray-500 space-y-1 ml-1">
-                    <li><strong>內容主題</strong> (3 個)：標題、描述、關鍵字、SEO 指導</li>
-                    <li><strong>互動元素建議</strong> (2-3 個)</li>
-                    <li><strong>CTA 文案建議</strong> (3 個)</li>
-                    <li><strong>網頁生成提示詞</strong>：AI Studio 版本（React + Tailwind CSS）與 Gamma.app 版本（簡報/網頁）</li>
-                    <li><strong>自動引用 Phase 2 圖片</strong>：如果已生成圖片，提示詞會自動引用對應檔名</li>
-                    <li><strong>一鍵複製與開啟</strong>：複製提示詞後自動開啟對應的生成平台</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Step 7 */}
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-600/20 text-orange-400 flex items-center justify-center font-bold text-lg border border-orange-600/30">7</div>
-              <div>
-                <h3 className="text-lg font-bold text-white mb-1">Phase 5: Ultra 版本體驗</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  本版本不再提供 Landing Page 配圖生成功能。若需使用進階體驗，請前往
-                  {' '}
-                  <a
-                    href="https://ultra.icareu.tw/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-400 hover:text-orange-300 underline"
-                  >
-                    Ultra 版本
-                  </a>
-                  。
+                  下載完整的 <strong>Shopee Listing 報告</strong>（.txt），包含 SEO 標題、產品描述、所有圖片 Prompt、合規檢查結果。每張圖片可單獨下載為 PNG。
                 </p>
               </div>
             </div>
           </div>
 
           <div className="mt-10 pt-6 border-t border-white/10 flex justify-end">
-            <button 
+            <button
               onClick={onClose}
-              className="w-full sm:w-auto px-8 py-3 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center space-x-2"
+              className="w-full sm:w-auto px-8 py-3 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg hover:shadow-xl active:scale-95"
             >
-              <span>開始體驗 v0.8</span>
+              開始體驗 v0.9
             </button>
           </div>
         </div>

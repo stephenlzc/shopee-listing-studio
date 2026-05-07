@@ -1,24 +1,25 @@
 /**
- * 圖片生成自訂 Hook
- * 統一處理圖片生成、快取、錯誤處理
+ * 圖片生成自訂 Hook — Shopee Edition
+ * 對接 imageGenService.generateImage()，使用 image-2 API
  */
 
 import { useState, useCallback } from 'react';
-import { generateMarketingImage } from '../services/geminiService';
+import { generateImage, b64JsonToDataUri } from '../services/imageGenService';
 import { getCachedImage, setCachedImage } from '../utils/imageCache';
 import { AppError } from '../utils/errorHandler';
+import type { ImageGenerationParams } from '../types/shopee';
 
-type AspectRatio = '1:1' | '9:16' | '16:9' | '3:4' | '4:3';
+type ImageSize = '1024x1024' | '1024x1536' | '1536x1024' | '2048x2048';
 
 interface UseImageGenerationReturn {
   image: string | null;
   loading: boolean;
   error: string | null;
-  generateImage: (
+  generate: (
     prompt: string,
-    aspectRatio: AspectRatio,
+    size: ImageSize,
     refImageBase64?: string,
-    generationContext?: 'phase2' | 'phase5'
+    cacheContext?: string,
   ) => Promise<void>;
   clearImage: () => void;
 }
@@ -28,36 +29,50 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateImage = useCallback(
+  const generate = useCallback(
     async (
       prompt: string,
-      aspectRatio: AspectRatio,
+      size: ImageSize,
       refImageBase64?: string,
-      generationContext: 'phase2' | 'phase5' = 'phase2'
+      cacheContext: string = 'shopee',
     ) => {
       setLoading(true);
       setError(null);
 
       try {
-        // 先檢查快取
-        const cached = getCachedImage(prompt, aspectRatio, refImageBase64, generationContext);
+        // 檢查快取
+        const cached = getCachedImage(prompt, size, refImageBase64, cacheContext);
         if (cached) {
           setImage(cached);
           setLoading(false);
           return;
         }
 
-        // 從 API 生成圖片
-        const imageData = await generateMarketingImage(
+        const params: ImageGenerationParams = {
+          model: 'gpt-image-2',
           prompt,
-          refImageBase64,
-          aspectRatio,
-          generationContext
-        );
+          n: 1,
+          size,
+          quality: 'medium',
+          output_format: 'png',
+        };
 
-        // 儲存到快取
-        setCachedImage(prompt, aspectRatio, imageData, refImageBase64, generationContext);
+        if (refImageBase64) {
+          params.image = refImageBase64;
+        }
 
+        const result = await generateImage({ params });
+
+        let imageData: string;
+        if (result.b64Json) {
+          imageData = b64JsonToDataUri(result.b64Json);
+        } else if (result.url) {
+          imageData = result.url;
+        } else {
+          throw new Error('No image data in response');
+        }
+
+        setCachedImage(prompt, size, imageData, refImageBase64, cacheContext);
         setImage(imageData);
       } catch (err) {
         if (err instanceof AppError) {
@@ -70,7 +85,7 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   const clearImage = useCallback(() => {
@@ -78,13 +93,5 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
     setError(null);
   }, []);
 
-  return {
-    image,
-    loading,
-    error,
-    generateImage,
-    clearImage,
-  };
+  return { image, loading, error, generate, clearImage };
 };
-
-

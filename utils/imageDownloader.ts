@@ -4,8 +4,7 @@
  */
 
 import JSZip from 'jszip';
-import { ContentItem } from '../types';
-import { generateImageFileName } from './imageNaming';
+import type { ImagePrompt } from '../types/shopee';
 
 /**
  * 將 base64 data URL 轉換為 Blob
@@ -33,19 +32,19 @@ const dataURLtoBlob = (dataURL: string): Blob => {
  */
 export const downloadAllImages = async (
   images: Map<string, string>,
-  items: ContentItem[],
-  zipFileName: string = 'marketing-assets'
+  items: ImagePrompt[],
+  zipFileName: string = 'shopee-images'
 ): Promise<void> => {
   if (images.size === 0) {
     throw new Error('沒有可下載的圖片');
   }
 
   const zip = new JSZip();
-  
-  // 建立檔名映射表
+
+  // Build filename map from ImagePrompt ids
   const fileNameMap = new Map<string, string>();
-  items.forEach((item, index) => {
-    fileNameMap.set(item.id, generateImageFileName(item, index));
+  items.forEach((item) => {
+    fileNameMap.set(item.id, `${item.id}.png`);
   });
 
   // 將所有圖片加入 ZIP

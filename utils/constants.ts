@@ -1,5 +1,5 @@
 /**
- * 應用程式常數定義
+ * 應用程式常數定義 — Taiwan Shopee Edition
  */
 
 // 顏色系統
@@ -23,14 +23,30 @@ export const COLORS = {
   },
 } as const;
 
-// API 配置
+// API 配置 (中传 proxy / xi-ai.cn)
 export const API_CONFIG = {
+  // Image generation (image-2)
+  IMAGE_ENDPOINT: 'https://api.xi-ai.cn/v1/images/generations',
+  IMAGE_MODEL: 'gpt-image-2' as const,
+  IMAGE_TIMEOUT_MS: 180_000, // 180 seconds
+
+  // Text generation (gpt-5.5)
+  CHAT_ENDPOINT: 'https://api.xi-ai.cn/v1/chat/completions',
+  CHAT_MODEL: 'gpt-5.5' as const,
+  CHAT_TIMEOUT_MS: 120_000, // 120 seconds
+
+  // Retry
   MAX_RETRIES: 3,
-  PRO_IMAGE_MAX_RETRIES: 5,
-  INITIAL_DELAY: 2000,
-  PRO_IMAGE_INITIAL_DELAY: 5000,
+  IMAGE_MAX_RETRIES: 3,
+  INITIAL_DELAY: 3000,
+  IMAGE_INITIAL_DELAY: 5000,
   RETRY_FACTOR: 2,
-  THINKING_BUDGET: 1024,
+} as const;
+
+// 圖片大小 (image-2 supported sizes)
+export const IMAGE_SIZES = {
+  MAIN: '1024x1024' as const,    // 1:1 main/SKU images
+  DETAIL: '1024x1536' as const,  // 2:3 detail images
 } as const;
 
 // 檔案限制
@@ -49,7 +65,7 @@ export const INPUT_LIMITS = {
 
 // 快取配置
 export const CACHE_CONFIG = {
-  IMAGE_CACHE_PREFIX: 'pm_designer_image_',
+  IMAGE_CACHE_PREFIX: 'shopee_image_',
   IMAGE_CACHE_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7 days
   MAX_CACHE_SIZE: 50 * 1024 * 1024, // 50MB
 } as const;
@@ -57,10 +73,24 @@ export const CACHE_CONFIG = {
 // 圖片比例
 export const ASPECT_RATIOS = {
   SQUARE: '1:1' as const,
+  DETAIL: '2:3' as const,
   PORTRAIT: '9:16' as const,
   LANDSCAPE: '16:9' as const,
-  PORTRAIT_ALT: '3:4' as const,
-  LANDSCAPE_ALT: '4:3' as const,
 } as const;
 
+// Shopee 輸出數量限制
+export const SHOPEE_LIMITS = {
+  MAIN_IMAGES: 6,
+  MIN_DETAIL_IMAGES: 4,
+  MAX_DETAIL_IMAGES: 6,
+  SEO_TITLES: 5,
+  SEO_TITLE_MIN_CHARS: 50, // Chinese characters
+} as const;
 
+// localStorage keys
+export const STORAGE_KEYS = {
+  API_KEY: 'openai_api_key',
+  PROJECTS: 'shopee-projects-v1',
+  TEMPLATES: 'shopee-templates-v1',
+  PREFERENCES: 'user-preferences',
+} as const;

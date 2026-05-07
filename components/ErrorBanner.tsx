@@ -1,6 +1,5 @@
 import React from 'react';
 import { ErrorType } from '../utils/errorHandler';
-import { AppState } from '../types';
 
 interface ErrorBannerProps {
   errorMsg: string;

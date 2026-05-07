@@ -13,7 +13,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSave }) => {
 
   useEffect(() => {
     // Check if key exists in localStorage on mount
-    const storedKey = localStorage.getItem('gemini_api_key');
+    const storedKey = localStorage.getItem('openai_api_key');
     if (storedKey) {
       setApiKey(storedKey);
     }
@@ -33,7 +33,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSave }) => {
     }
     
     setValidationError(undefined);
-    localStorage.setItem('gemini_api_key', trimmedKey);
+    localStorage.setItem('openai_api_key', trimmedKey);
     onSave(trimmedKey);
   };
 
@@ -44,16 +44,16 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSave }) => {
           <div className="w-12 h-12 bg-purple-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-purple-600/40">
              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Setup Gemini API</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">設定 API Key</h2>
           <p className="text-gray-400 text-sm">
-            為了確保安全，請使用您自己的 API Key。<br/>
+            請輸入您的 API Key（支援 OpenAI 相容格式）。<br/>
             您的 Key 只會儲存在瀏覽器中，不會上傳至伺服器。
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gemini API Key</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">API Key</label>
             <div className="relative">
                 <input 
                     type={isVisible ? "text" : "password"}
@@ -64,7 +64,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSave }) => {
                         setValidationError(undefined);
                       }
                     }}
-                    placeholder="AIzaSy..."
+                    placeholder="sk-..."
                     className={`w-full bg-black/30 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none transition-colors pr-10 ${
                       validationError ? 'border-red-500' : 'border-white/10 focus:border-purple-500'
                     }`}
@@ -97,14 +97,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSave }) => {
         </form>
 
         <div className="mt-6 text-center">
-            <a 
-                href="https://aistudio.google.com/app/apikey" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs text-purple-400 hover:text-purple-300 underline"
-            >
-                還沒有 Key? 點此免費獲取
-            </a>
+            <p className="text-xs text-gray-500">
+              支援 OpenAI 相容 API（如中传代理 xi-ai.cn）
+            </p>
         </div>
       </div>
     </div>

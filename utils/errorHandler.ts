@@ -56,7 +56,7 @@ const serializeError = (error: unknown): string => {
       // 提取額外屬性
       const customProps = Object.getOwnPropertyNames(error).reduce((acc, key) => {
         if (key !== 'name' && key !== 'message' && key !== 'stack') {
-          acc[key] = (error as Record<string, unknown>)[key];
+          acc[key] = (error as unknown as Record<string, unknown>)[key];
         }
         return acc;
       }, {} as Record<string, unknown>);
@@ -126,7 +126,7 @@ const getUserFriendlyMessage = (type: ErrorType, statusCode?: number): string =>
       return 'API 請求次數已達上限，請稍候片刻後再試，或檢查您的 API 配額設定。';
     
     case ErrorType.AUTH:
-      return 'API 金鑰驗證失敗，請檢查您的 Gemini API Key 是否正確，或前往設定頁面重新輸入。';
+      return 'API 金鑰驗證失敗，請檢查您的 API Key 是否正確，或前往設定頁面重新輸入。';
     
     case ErrorType.VALIDATION:
       return '輸入資料格式不正確，請檢查您輸入的內容後再試一次。';
@@ -153,11 +153,11 @@ const getUserFriendlyMessage = (type: ErrorType, statusCode?: number): string =>
 };
 
 /**
- * 處理 Gemini API 錯誤
+ * 處理 API 錯誤
  * 將原始錯誤轉換為結構化的 AppError
  */
-export const handleGeminiError = (error: unknown): never => {
-  console.error('Gemini API Error Details:', error);
+export const handleApiError = (error: unknown): never => {
+  console.error('API Error Details:', error);
   
   const statusCode = extractStatusCode(error);
   const errorStr = serializeError(error);
@@ -202,9 +202,9 @@ export const validateApiKey = (key: string): { valid: boolean; error?: string } 
     return { valid: false, error: 'API Key 長度不足，請確認是否正確' };
   }
   
-  // Gemini API Key 通常以 AIza 開頭
-  if (!key.startsWith('AIza')) {
-    return { valid: false, error: 'API Key 格式不正確，Gemini API Key 應以 AIza 開頭' };
+  // OpenAI-compatible API Key 通常以 sk- 開頭
+  if (!key.startsWith('sk-')) {
+    return { valid: false, error: 'API Key 格式不正確，OpenAI 相容 API Key 應以 sk- 開頭' };
   }
   
   return { valid: true };
