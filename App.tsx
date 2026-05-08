@@ -81,7 +81,15 @@ const App: React.FC = () => {
 
   // --- Project History ---
   const [projects, setProjects] = useState<ShopeeProject[]>(() => loadProjects());
-  const [currentProjectId] = useState<string>(() => `proj_${Date.now()}`);
+  const [currentProjectId, setCurrentProjectId] = useState<string>(() => {
+    const saved = localStorage.getItem('current-project-id');
+    return saved || `proj_${Date.now()}`;
+  });
+
+  // Persist project ID
+  useEffect(() => {
+    localStorage.setItem('current-project-id', currentProjectId);
+  }, [currentProjectId]);
 
   // Auto-save after phase completion
   function autoSave(status: ShopeeProject['status']) {
@@ -276,6 +284,9 @@ const App: React.FC = () => {
 
   // --- Project History Handlers ---
   const handleSelectProject = (project: ShopeeProject) => {
+    // Adopt project ID so subsequent saves update this project
+    setCurrentProjectId(project.id);
+
     // Reset to project state
     setProductName(project.projectName);
     setVisualStyle(project.visualStyle);
@@ -305,6 +316,7 @@ const App: React.FC = () => {
   };
 
   const handleNewProject = () => {
+    setCurrentProjectId(`proj_${Date.now()}`);
     setAppState(ShopeeAppState.IDLE);
     setProductName('');
     setBrandContext('');
