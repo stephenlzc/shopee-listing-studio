@@ -92,7 +92,8 @@ const App: React.FC = () => {
   }, [currentProjectId]);
 
   // Auto-save after phase completion
-  function autoSave(status: ShopeeProject['status']) {
+  // Accept listing param because React state is stale in the same render
+  function autoSave(status: ShopeeProject['status'], listing?: ShopeeListing | null) {
     if (!imagePreview) return;
     const project: ShopeeProject = {
       id: currentProjectId,
@@ -101,7 +102,7 @@ const App: React.FC = () => {
       visualStyle,
       products: [{ id: 'prod-1', imageBase64: imagePreview, name: productName }],
       skuOptions,
-      listing: shopeeListing,
+      listing: listing ?? shopeeListing,
       taskMap: {},
       generationHistory: [],
       processedImageUrl: processedImageBase64 || baseImageBase64 || undefined,
@@ -111,7 +112,7 @@ const App: React.FC = () => {
     };
     saveProject(project);
     setProjects(loadProjects());
-  };
+  }
 
   // --- Check for API Key on mount ---
   useEffect(() => {
@@ -259,7 +260,7 @@ const App: React.FC = () => {
       setShopeeListing(listing);
       setVisionResult(vision);
       setAppState(ShopeeAppState.PHASE2_READY);
-      autoSave('listing_ready');
+      autoSave('listing_ready', listing);
     } catch (e) {
       handleError(e, 'Listing 生成失敗，請稍候再試。');
     }
