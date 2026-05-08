@@ -7,7 +7,7 @@
  * Uses: generateText() and cleanJsonResponse() from imageGenService.ts
  */
 
-import { generateText, cleanJsonResponse } from './imageGenService';
+import { generateText, safeJsonParse } from './imageGenService';
 import { DIRECTOR_SYSTEM_PROMPT } from '../prompts/directorPrompt';
 import { LISTING_SYSTEM_PROMPT } from '../prompts/listingPrompt';
 import { filterBannedWords } from '../utils/compliance';
@@ -84,8 +84,7 @@ export async function analyzeProductAndGenerateStrategy(
   }
 
   try {
-    const cleaned = cleanJsonResponse(content);
-    const parsed = JSON.parse(cleaned);
+    const parsed = safeJsonParse<Record<string, any>>(content);
 
     const output: DirectorOutput = {
       productAnalysis: {
@@ -212,8 +211,7 @@ export async function generateShopeeListing(
   }
 
   try {
-    const cleaned = cleanJsonResponse(content);
-    const parsed = JSON.parse(cleaned);
+    const parsed = safeJsonParse<Record<string, any>>(content);
 
     // Parse and filter SEO titles
     const seoTitles: SeoTitle[] = (parsed.seo_titles || []).map((t: any, i: number) => {

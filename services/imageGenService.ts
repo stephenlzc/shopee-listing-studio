@@ -1,15 +1,21 @@
 /**
- * Image-2 API Service (via 中传 proxy)
- * Wraps POST https://api.xi-ai.cn/v1/images/generations
+ * Image-2 + GPT-5.5 API Service (via APIMart)
  *
- * Reference: proxy.md
+ * Image generation is ASYNCHRONOUS:
+ *   POST /images/generations → task_id
+ *   → wait 12s → poll GET /v1/tasks/{task_id} every 4s
+ *   → completed → download image URL → convert to base64 Data URI
+ *
+ * Text generation is synchronous (standard chat completions).
+ *
+ * Reference: https://docs.apimart.ai/cn/api-reference/images/gpt-image-2/generation
  */
 
+import { jsonrepair } from 'jsonrepair';
+import { API_CONFIG } from '../utils/constants';
 import { AppError, ErrorType } from '../utils/errorHandler';
 import type {
   ImageGenerationParams,
-  ImageUrlResponse,
-  ImageB64Response,
   ChatCompletionRequest,
   ChatCompletionResponse,
 } from '../types/shopee';
@@ -18,17 +24,35 @@ import type {
 // Constants
 // ============================================================================
 
-const IMAGE_ENDPOINT = 'https://api.xi-ai.cn/v1/images/generations';
-const CHAT_ENDPOINT = 'https://api.xi-ai.cn/v1/chat/completions';
-const DEFAULT_TIMEOUT_MS = 180_000; // 180 seconds (image gen takes 30-90s)
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 5000;
+const IMAGE_ENDPOINT = API_CONFIG.IMAGE_ENDPOINT;
+const CHAT_ENDPOINT = API_CONFIG.CHAT_ENDPOINT;
+const IMAGE_TIMEOUT_MS = API_CONFIG.IMAGE_TIMEOUT_MS;
+const POLL_INTERVAL_MS = API_CONFIG.IMAGE_POLL_INTERVAL_MS;
+const POLL_INITIAL_DELAY_MS = API_CONFIG.IMAGE_POLL_INITIAL_DELAY_MS;
+const MAX_RETRIES = API_CONFIG.MAX_RETRIES;
+const IMAGE_MAX_RETRIES = API_CONFIG.IMAGE_MAX_RETRIES;
+const INITIAL_RETRY_DELAY = API_CONFIG.IMAGE_INITIAL_DELAY;
+
+// Size mapping: pixel → aspect ratio
+const SIZE_MAP: Record<string, { ratio: string; resolution: string }> = {
+  '1024x1024': { ratio: '1:1', resolution: '1k' },
+  '1024x1536': { ratio: '2:3', resolution: '1k' },
+  '1536x1024': { ratio: '3:2', resolution: '1k' },
+  '2048x2048': { ratio: '1:1', resolution: '2k' },
+  '2048x1152': { ratio: '16:9', resolution: '2k' },
+  '3840x2160': { ratio: '16:9', resolution: '4k' },
+  '2160x3840': { ratio: '9:16', resolution: '4k' },
+};
+
+function mapSize(size: string): { ratio: string; resolution: string } {
+  return SIZE_MAP[size] || { ratio: '1:1', resolution: '1k' };
+}
 
 // ============================================================================
 // API Key Management
 // ============================================================================
 
-const HARDCODED_API_KEY = 'sk-sfLfU1ZDLTVC8vYt8e22A188A34a4dEf911e4eB336E932D5';
+const HARDCODED_API_KEY = 'sk-9Ngi0kKF5aqdFzNzWVihFXDdAdFWyUUB2hYt1GcjoNInlDCC';
 
 export const getApiKey = (): string => {
   const storedKey = localStorage.getItem('openai_api_key');
@@ -42,10 +66,6 @@ export const getApiKey = (): string => {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Retry with exponential backoff for image generation.
- * Retries on rate-limit (429), server-busy (503), timeout, and network errors.
- */
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
   retries: number = MAX_RETRIES,
@@ -64,15 +84,12 @@ async function retryWithBackoff<T>(
       const isRetryable =
         errorStr.includes('429') ||
         errorStr.includes('503') ||
-        errorStr.includes('Overloaded') ||
         errorStr.includes('timeout') ||
         errorStr.includes('fetch') ||
-        errorStr.includes('network') ||
-        errorStr.includes('RESOURCE_EXHAUSTED') ||
-        errorStr.includes('Too Many Requests');
+        errorStr.includes('network');
 
       if (isRetryable) {
-        console.warn(`[ImageGen Retry] Attempt ${attempt}/${retries}. Retrying in ${currentDelay}ms...`);
+        console.warn(`[APIMart Retry] Attempt ${attempt}/${retries}. Retrying in ${currentDelay}ms...`);
         await wait(currentDelay);
         currentDelay *= factor;
       } else {
@@ -85,7 +102,78 @@ async function retryWithBackoff<T>(
 }
 
 // ============================================================================
-// Image Generation
+// Async Image Polling
+// ============================================================================
+
+interface TaskResult {
+  status: 'submitted' | 'processing' | 'completed' | 'failed';
+  task_id: string;
+  progress?: number;
+  actual_time?: number;
+  result?: {
+    images: Array<{ url: string[] }>;
+  };
+  error?: { message: string };
+}
+
+async function pollTask(taskId: string, signal?: AbortSignal): Promise<string> {
+  const startTime = Date.now();
+
+  // Initial delay before first poll
+  await wait(POLL_INITIAL_DELAY_MS);
+
+  while (true) {
+    if (signal?.aborted) {
+      throw new AppError({ type: ErrorType.API, message: 'Polling aborted', userMessage: '圖片生成已取消。' });
+    }
+
+    if (Date.now() - startTime > IMAGE_TIMEOUT_MS) {
+      throw new AppError({ type: ErrorType.API, message: 'Image polling timed out', userMessage: '圖片生成超時，請重試。' });
+    }
+
+    const response = await fetch(`https://api.apimart.ai/v1/tasks/${taskId}`, {
+      headers: { Authorization: `Bearer ${getApiKey()}` },
+      signal,
+    });
+
+    if (!response.ok) {
+      if (response.status === 429 || response.status === 503) {
+        await wait(POLL_INTERVAL_MS);
+        continue;
+      }
+      throw new AppError({
+        type: ErrorType.API,
+        message: `Task poll failed: HTTP ${response.status}`,
+        userMessage: '查詢生成狀態失敗，請重試。',
+      });
+    }
+
+    const body = await response.json();
+    const task: TaskResult = body.data || body;
+
+    if (task.status === 'completed') {
+      const imageUrl = task.result?.images?.[0]?.url?.[0];
+      if (!imageUrl) {
+        throw new AppError({ type: ErrorType.API, message: 'No image URL in completed task', userMessage: '圖片生成失敗，未返回圖片。' });
+      }
+      return imageUrl;
+    }
+
+    if (task.status === 'failed') {
+      throw new AppError({
+        type: ErrorType.API,
+        message: task.error?.message || 'Task failed',
+        userMessage: '圖片生成失敗，請重試。',
+      });
+    }
+
+    // Still submitted/processing → wait and poll again
+    await wait(POLL_INTERVAL_MS);
+  }
+}
+
+// ============================================================================
+// Image Generation (Async via APIMart)
 // ============================================================================
 
 interface GenerateImageOptions {
@@ -94,110 +182,97 @@ interface GenerateImageOptions {
 }
 
 /**
- * Generate an image via image-2 API.
+ * Generate an image via APIMart image-2 API (asynchronous).
  *
- * Return format:
- *   - Without `image` param → data[0].url (URL string to download)
- *   - With `image` param    → data[0].b64_json (base64 string, decode to get image bytes)
+ * Flow:
+ *   1. POST /images/generations → task_id
+ *   2. Poll GET /v1/tasks/{task_id} until completed
+ *   3. Download image from URL → convert to base64 Data URI
+ *
+ * Returns { b64Json: "data:image/png;base64,..." }
+ * (Always returns as base64 to maintain compatibility with upper layers)
  */
 export async function generateImage(options: GenerateImageOptions): Promise<{ url?: string; b64Json?: string }> {
   const { params, signal } = options;
 
   return retryWithBackoff(async () => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    // Build APIMart-format request body
+    const { ratio, resolution } = mapSize(params.size || '1024x1024');
 
-    // Merge external signal with timeout
-    if (signal) {
-      signal.addEventListener('abort', () => controller.abort());
+    const body: Record<string, unknown> = {
+      model: 'gpt-image-2',
+      prompt: params.prompt,
+      n: params.n || 1,
+      size: ratio,
+      resolution,
+    };
+
+    // Reference image → image_urls array (APIMart format)
+    if (params.image) {
+      body.image_urls = [params.image];
     }
 
-    try {
-      const response = await fetch(IMAGE_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getApiKey()}`,
-        },
-        body: JSON.stringify(params),
-        signal: controller.signal,
+    console.log(`[APIMart] Submitting image gen: "${params.prompt.substring(0, 80)}..." size=${ratio} res=${resolution} hasRef=${!!params.image}`);
+
+    // Step 1: Submit
+    const submitRes = await fetch(IMAGE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getApiKey()}`,
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+
+    if (!submitRes.ok) {
+      const errText = await submitRes.text().catch(() => 'Unknown');
+      console.error(`[APIMart] Submit failed: HTTP ${submitRes.status} — ${errText}`);
+      throw new AppError({
+        type: submitRes.status === 401 || submitRes.status === 403 ? ErrorType.AUTH : ErrorType.API,
+        message: `Image submit failed: HTTP ${submitRes.status}`,
+        userMessage: `圖片提交失敗 (HTTP ${submitRes.status})，請稍候再試。`,
       });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        console.error(`[ImageGen] HTTP ${response.status}: ${errorText}`);
-
-        throw new AppError({
-          type: response.status === 401 || response.status === 403 ? ErrorType.AUTH : ErrorType.API,
-          message: `Image generation failed: HTTP ${response.status}`,
-          userMessage: `圖片生成失敗 (HTTP ${response.status})，請稍候再試。`,
-        });
-      }
-
-      const data: ImageUrlResponse | ImageB64Response = await response.json();
-
-      if (params.image) {
-        // With reference image → b64_json
-        const b64Data = data as ImageB64Response;
-        if (!b64Data.data?.[0]?.b64_json) {
-          throw new AppError({
-            type: ErrorType.API,
-            message: 'No b64_json in image response',
-            userMessage: '圖片生成失敗，回應格式異常。',
-          });
-        }
-        return { b64Json: b64Data.data[0].b64_json };
-      } else {
-        // Without reference image → url
-        const urlData = data as ImageUrlResponse;
-        if (!urlData.data?.[0]?.url) {
-          throw new AppError({
-            type: ErrorType.API,
-            message: 'No url in image response',
-            userMessage: '圖片生成失敗，回應格式異常。',
-          });
-        }
-        return { url: urlData.data[0].url };
-      }
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof AppError) throw error;
-
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new AppError({
-          type: ErrorType.API,
-          message: 'Image generation timed out',
-          userMessage: '圖片生成超時（超過 180 秒），請重試。',
-        });
-      }
-
-      throw error;
     }
-  });
-}
 
-/**
- * Generate multiple images concurrently (respecting sequence for reference-image chains).
- * For parallel independent images, use Promise.all instead.
- */
-export async function generateImagesSequentially(
-  paramsList: ImageGenerationParams[],
-): Promise<Array<{ url?: string; b64Json?: string }>> {
-  const results: Array<{ url?: string; b64Json?: string }> = [];
+    const submitData = await submitRes.json();
+    const taskId = submitData.data?.[0]?.task_id;
 
-  for (const params of paramsList) {
-    const result = await generateImage({ params });
-    results.push(result);
-  }
+    if (!taskId) {
+      console.error('[APIMart] No task_id in response:', JSON.stringify(submitData).substring(0, 200));
+      throw new AppError({ type: ErrorType.API, message: 'No task_id in response', userMessage: '圖片提交失敗，回應格式異常。' });
+    }
 
-  return results;
+    console.log(`[APIMart] Task submitted: ${taskId}`);
+
+    // Step 2: Poll until completed
+    const imageUrl = await pollTask(taskId, signal);
+    console.log(`[APIMart] Task completed: ${taskId}, downloading from ${imageUrl.substring(0, 60)}...`);
+
+    // Step 3: Download image → base64 Data URI
+    const imgRes = await fetch(imageUrl, { signal });
+    if (!imgRes.ok) {
+      throw new AppError({ type: ErrorType.API, message: `Image download failed: HTTP ${imgRes.status}`, userMessage: '圖片下載失敗，請重試。' });
+    }
+
+    const blob = await imgRes.blob();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to convert image to base64'));
+      reader.readAsDataURL(blob);
+    });
+
+    // Extract base64 part without "data:..." prefix
+    const b64Part = base64.split(',')[1];
+    console.log(`[APIMart] Image downloaded: ${(blob.size / 1024).toFixed(0)}KB`);
+
+    return { b64Json: b64Part };
+  }, IMAGE_MAX_RETRIES);
 }
 
 // ============================================================================
-// Text Generation (GPT-5.5 via Chat Completions)
+// Text Generation (GPT-5.5 via Chat Completions — synchronous)
 // ============================================================================
 
 interface GenerateTextOptions {
@@ -206,12 +281,8 @@ interface GenerateTextOptions {
   timeoutMs?: number;
 }
 
-/**
- * Send a chat completion request to GPT-5.5 (via 中传 proxy).
- * Used for: visual strategy, listing generation, image text recognition.
- */
 export async function generateText(options: GenerateTextOptions): Promise<ChatCompletionResponse> {
-  const { request, signal, timeoutMs = 120_000 } = options;
+  const { request, signal, timeoutMs = API_CONFIG.CHAT_TIMEOUT_MS } = options;
 
   return retryWithBackoff(async () => {
     const controller = new AbortController();
@@ -228,7 +299,7 @@ export async function generateText(options: GenerateTextOptions): Promise<ChatCo
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getApiKey()}`,
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify({ ...request, stream: false }),
         signal: controller.signal,
       });
 
@@ -236,8 +307,7 @@ export async function generateText(options: GenerateTextOptions): Promise<ChatCo
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
-        console.error(`[TextGen] HTTP ${response.status}: ${errorText}`);
-
+        console.error(`[APIMart Chat] HTTP ${response.status}: ${errorText}`);
         throw new AppError({
           type: response.status === 401 || response.status === 403 ? ErrorType.AUTH : ErrorType.API,
           message: `Text generation failed: HTTP ${response.status}`,
@@ -271,20 +341,73 @@ export async function generateText(options: GenerateTextOptions): Promise<ChatCo
 
 export function cleanJsonResponse(text: string): string {
   let clean = text.trim();
+
+  // Remove markdown code blocks
   if (clean.startsWith('```json')) {
     clean = clean.replace(/^```json\s*/, '').replace(/```\s*$/, '');
   } else if (clean.startsWith('```')) {
     clean = clean.replace(/^```\s*/, '').replace(/```\s*$/, '');
   }
+
+  // APIMart GPT-5.5 may wrap JSON in text or add extra content
+  // Try to extract JSON object by finding outermost { }
+  const firstBrace = clean.indexOf('{');
+  const lastBrace = clean.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    clean = clean.substring(firstBrace, lastBrace + 1);
+  }
+
   return clean.trim();
 }
 
+/**
+ * Repair common GPT-generated JSON syntax errors:
+ * - Missing commas between array elements or object properties
+ * - Trailing commas
+ */
+function repairJsonSyntax(json: string): string {
+  // Remove trailing commas before ] or }
+  let repaired = json.replace(/,\s*([}\]])/g, '$1');
+
+  // Insert missing commas between consecutive values on separate lines
+  // Pattern: end-of-value followed by newline+whitespace+start-of-next-value
+  // Value ends: " } ] number true false null
+  // Value starts: " { [ number true false null
+  repaired = repaired.replace(
+    /(["}\]\d]|true|false|null)\s*\n\s*(["{\[\d]|true|false|null)/g,
+    (match, before, after, offset) => {
+      // Don't insert comma if there's already one or a closing bracket
+      const beforeMatch = match.trimEnd();
+      if (/,\s*$/.test(beforeMatch)) return match; // Already has comma
+      if (/[:\[]\s*$/.test(beforeMatch)) return match; // After : or [ — no comma needed
+      return before + ',\n' + match.substring(match.indexOf('\n') + 1);
+    }
+  );
+
+  return repaired;
+}
+
+/**
+ * Safely parse JSON with repair fallback (uses jsonrepair library)
+ */
+export function safeJsonParse<T = unknown>(text: string): T {
+  const cleaned = cleanJsonResponse(text);
+  try {
+    // First try clean parse
+    return JSON.parse(cleaned);
+  } catch {
+    // Use jsonrepair library as fallback — handles missing commas, trailing commas, unquoted keys, etc.
+    console.warn('[JSON] Clean parse failed, repairing with jsonrepair...');
+    const repaired = jsonrepair(cleaned);
+    return JSON.parse(repaired);
+  }
+}
+
 // ============================================================================
-// Utility: Base64 helpers for reference images
+// Utility: Base64 helpers
 // ============================================================================
 
 export function fileToDataUri(base64Image: string, mimeType: string = 'image/png'): string {
-  // If already a Data URI, return as-is
   if (base64Image.startsWith('data:')) return base64Image;
   return `data:${mimeType};base64,${base64Image}`;
 }
@@ -293,9 +416,6 @@ export function b64JsonToDataUri(b64Json: string, mimeType: string = 'image/png'
   return `data:${mimeType};base64,${b64Json}`;
 }
 
-/**
- * Convert a File object to base64 Data URI
- */
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

@@ -23,30 +23,32 @@ export const COLORS = {
   },
 } as const;
 
-// API 配置 (中传 proxy / xi-ai.cn)
+// API 配置 (APIMart — async API)
 export const API_CONFIG = {
-  // Image generation (image-2)
-  IMAGE_ENDPOINT: 'https://api.xi-ai.cn/v1/images/generations',
+  // Image generation (image-2) — async: submit → poll → get
+  IMAGE_ENDPOINT: 'https://api.apimart.ai/v1/images/generations',
   IMAGE_MODEL: 'gpt-image-2' as const,
-  IMAGE_TIMEOUT_MS: 180_000, // 180 seconds
+  IMAGE_TIMEOUT_MS: 300_000, // 300 seconds (async takes longer)
+  IMAGE_POLL_INTERVAL_MS: 4000, // 4s between polls
+  IMAGE_POLL_INITIAL_DELAY_MS: 12000, // 12s before first poll
 
   // Text generation (gpt-5.5)
-  CHAT_ENDPOINT: 'https://api.xi-ai.cn/v1/chat/completions',
+  CHAT_ENDPOINT: 'https://api.apimart.ai/v1/chat/completions',
   CHAT_MODEL: 'gpt-5.5' as const,
-  CHAT_TIMEOUT_MS: 120_000, // 120 seconds
+  CHAT_TIMEOUT_MS: 180_000,
 
   // Retry
   MAX_RETRIES: 3,
-  IMAGE_MAX_RETRIES: 3,
+  IMAGE_MAX_RETRIES: 2,
   INITIAL_DELAY: 3000,
-  IMAGE_INITIAL_DELAY: 5000,
+  IMAGE_INITIAL_DELAY: 6000,
   RETRY_FACTOR: 2,
 } as const;
 
-// 圖片大小 (image-2 supported sizes)
+// 圖片大小 (APIMart: aspect ratio + resolution)
 export const IMAGE_SIZES = {
-  MAIN: '1024x1024' as const,    // 1:1 main/SKU images
-  DETAIL: '1024x1536' as const,  // 2:3 detail images
+  MAIN: '1:1' as const,     // 1:1 main/SKU images
+  DETAIL: '2:3' as const,   // 2:3 detail images
 } as const;
 
 // 檔案限制

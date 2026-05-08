@@ -1,8 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { BlurTool } from './BlurTool';
 import { TextDetectionPanel } from './TextDetectionPanel';
 import { ShopeeAppState } from '../types/shopee';
 import type { ShopeeListing, VisionAnalysisResult, SeoTitle, BlurRegion } from '../types/shopee';
+
+// ============================================================================
+// Copy Button
+// ============================================================================
+
+const CopyButton: React.FC<{ text: string; label?: string }> = ({ text, label }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback
+    }
+  }, [text]);
+  return (
+    <button
+      onClick={handleCopy}
+      className={`text-[10px] px-2 py-0.5 rounded border transition-all flex-shrink-0 ${
+        copied
+          ? 'bg-green-500/20 text-green-400 border-green-500/30'
+          : 'bg-white/5 text-gray-500 hover:text-white hover:bg-white/10 border-white/10'
+      }`}
+      title={label || '複製'}
+    >
+      {copied ? '已複製!' : '複製'}
+    </button>
+  );
+};
 
 // ============================================================================
 // Props
@@ -52,9 +82,12 @@ const SeoTitleRow: React.FC<{ title: SeoTitle; onChange: (seq: number, value: st
   <div className="mb-3 last:mb-0">
     <div className="flex items-center justify-between mb-1">
       <span className="text-xs text-gray-500 font-bold">#{title.seq}</span>
-      <span className={`text-xs font-bold ${title.charCount >= 50 ? 'text-green-400' : 'text-yellow-400'}`}>
-        {title.charCount} 字{title.charCount < 50 && ' (建議 ≥ 50)'}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className={`text-xs font-bold ${title.charCount >= 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+          {title.charCount} 字{title.charCount < 50 && ' (建議 ≥ 50)'}
+        </span>
+        <CopyButton text={title.title} />
+      </div>
     </div>
     <textarea
       value={title.title}
@@ -230,7 +263,10 @@ export const Phase2Section: React.FC<Phase2SectionProps> = ({
 
             {/* Product Description */}
             <div>
-              <h3 className="text-md font-bold text-white mb-3">產品描述</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-md font-bold text-white">產品描述</h3>
+                <CopyButton text={editedDescription} label="複製全文" />
+              </div>
               <textarea
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
@@ -248,7 +284,7 @@ export const Phase2Section: React.FC<Phase2SectionProps> = ({
                       <span className="text-[10px] text-gray-500">{img.displaySize}</span>
                     </div>
                     <p className="text-xs text-gray-400 mb-1">{img.purpose}</p>
-                    <p className="text-[11px] text-gray-500 font-mono line-clamp-3 leading-relaxed">{img.promptText}</p>
+                    <div className="flex items-start justify-between gap-2"><p className="text-[11px] text-gray-500 font-mono line-clamp-3 leading-relaxed flex-1">{img.promptText}</p><CopyButton text={img.promptText} /></div>
                   </div>
                 ))}
               </div>
@@ -265,7 +301,7 @@ export const Phase2Section: React.FC<Phase2SectionProps> = ({
                         <span className="text-[10px] text-gray-500">{img.displaySize}</span>
                       </div>
                       <p className="text-xs text-gray-400 mb-1">{img.purpose}</p>
-                      <p className="text-[11px] text-gray-500 font-mono line-clamp-3 leading-relaxed">{img.promptText}</p>
+                      <div className="flex items-start justify-between gap-2"><p className="text-[11px] text-gray-500 font-mono line-clamp-3 leading-relaxed flex-1">{img.promptText}</p><CopyButton text={img.promptText} /></div>
                     </div>
                   ))}
                 </div>

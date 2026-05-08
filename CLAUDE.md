@@ -17,44 +17,75 @@ Full transformation spec: `TRANSFORMATION.md`.
 | Framework | React 18 + TypeScript 5.5 | Same |
 | Build | Vite 5 | Same |
 | Styling | Tailwind CSS (utility classes) | Same |
-| AI Text | `@google/genai` → Gemini 2.5 Flash | `fetch` → `POST https://api.xi-ai.cn/v1/chat/completions` (model: `gpt-5.5`) |
-| AI Image | `@google/genai` → Gemini 3 Pro Image | `fetch` → `POST https://api.xi-ai.cn/v1/images/generations` (model: `gpt-image-2`) |
+| AI Text | `@google/genai` → Gemini 2.5 Flash | `fetch` → `POST https://api.apimart.ai/v1/chat/completions` (model: `gpt-5.5`) |
+| AI Image | `@google/genai` → Gemini 3 Pro Image | `fetch` → `POST https://api.apimart.ai/v1/images/generations` (model: `gpt-image-2`) — **异步** |
 | Package mgr | npm | Same |
 | State | React `useState` / `useEffect` | Same (consider adding `useReducer` for complex state) |
 | Storage | `localStorage` | Same (key renamed: `gemini_api_key` → `openai_api_key`) |
 
 ---
 
-## API Configuration (中传 Proxy)
+## API Configuration (APIMart — 异步 API)
 
-All API details in `proxy.md`. Key points:
+**Provider**: APIMart (https://docs.apimart.ai)
+**API Key**: `sk-9Ngi0kKF5aqdFzNzWVihFXDdAdFWyUUB2hYt1GcjoNInlDCC`
 
 ```
-Endpoint:  https://api.xi-ai.cn/v1/
-Image:     POST /images/generations  (model: gpt-image-2)
-Text:      POST /chat/completions    (model: gpt-5.5)
-API Key:   sk-sfLfU1ZDLTVC8vYt8e22A188A34a4dEf911e4eB336E932D5
+Endpoint:  https://api.apimart.ai/v1/
+Image:     POST /images/generations  (model: gpt-image-2) — **异步**
+Poll:      GET  /v1/tasks/{task_id}
+Text:      POST /chat/completions    (model: gpt-5.5) — 同步
+```
+
+### Image generation — 异步流程
+
+图像生成是**纯异步**的，没有同步模式：
+
+```
+POST /images/generations
+  → 200 { data: [{ task_id: "task_xxx", status: "submitted" }] }
+
+等待 12s → 每 4s 轮询:
+GET /v1/tasks/{task_id}
+  → submitted / processing / completed / failed
+
+completed:
+  data.result.images[0].url[0] → 下载图片 → 转为 base64
 ```
 
 ### Image generation params (`gpt-image-2`)
 
 | Param | Type | Notes |
 |-------|------|-------|
-| `model` | string | Fixed: `"gpt-image-2"` (NOT `image-2`) |
+| `model` | string | Fixed: `"gpt-image-2"` |
 | `prompt` | string | Max 32000 chars |
-| `n` | integer | Default 1 |
-| `size` | string | `1024x1024` (main/SKU), `1024x1536` (detail), also `1536x1024`, `2048x2048` |
-| `quality` | string | `low` / `medium` (default) / `high` |
-| `image` | string | Reference image as `data:image/png;base64,...` |
-| `background` | string | `auto` (default) / `transparent` / `opaque` |
-| `output_format` | string | `png` (default) / `jpeg` |
+| `n` | integer | Default 1 (仅支持 1) |
+| `size` | string | 宽高比: `1:1`, `2:3`, `3:2`, `16:9`, `9:16` 等 13 种 + `auto` |
+| `resolution` | string | `1k` (default) / `2k` / `4k` (4K仅6种比例) |
+| `image_urls` | array | 参考图 URL 或 base64 Data URI，最多 16 张 |
+| `official_fallback` | bool | 是否回退到官方通道 (default: false) |
 
-### Critical rules
+### 内部大小映射
 
-- **Timeout ≥ 180 seconds** for image generation (takes 30–90s avg).
-- **Return format differs:** without `image` param → `data[0].url`; with `image` param → `data[0].b64_json`.
-- **Do NOT pass** `response_format`, `aspect_ratio`, `watermark`, or `size: "2K"` — they will error.
-- Reference images MUST be full Data URIs: `data:image/png;base64,{base64_string}`.
+| 旧 pixel size | APIMart ratio | resolution |
+|--------------|---------------|------------|
+| `1024x1024` | `1:1` | `1k` |
+| `1024x1536` | `2:3` | `1k` |
+| `2048x2048` | `1:1` | `2k` |
+
+### 超时与轮询
+
+- 提交超时: 300s
+- 首次轮询延迟: 12s
+- 轮询间隔: 4s
+- 重试次数: 2 次 (提交层面)
+
+### 关键规则
+
+- **不支持** `quality`, `background`, `output_format` 参数
+- `image` 参数在 service 层自动映射为 `image_urls`
+- `size` 参数在 service 层自动从 pixel 映射为 ratio
+- 图片结果始终以 base64 Data URI 返回（对上层透明）
 
 ---
 

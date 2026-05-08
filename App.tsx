@@ -10,10 +10,10 @@ import { LoadingOverlay } from './components/LoadingOverlay';
 import { InputForm } from './components/InputForm';
 import { Phase2Section } from './components/Phase2Section';
 import { ShopeeImageGrid } from './components/ShopeeImageGrid';
+import { ProjectHistory, loadProjects, saveProject } from './components/ProjectHistory';
 import { DebugPromptModal } from './components/DebugPromptModal';
 import { AppError, ErrorType } from './utils/errorHandler';
 import { validateProductName, validateBrandContext } from './utils/validators';
-import { LanguageMode, getLanguageMode, setLanguageMode } from './utils/languageMode';
 import { generateShopeeListingReport } from './utils/reportGenerator';
 import { downloadTextFile } from './utils/downloadHelper';
 import { FILE_LIMITS } from './utils/constants';
@@ -21,6 +21,7 @@ import { ShopeeAppState } from './types/shopee';
 import type {
   DirectorOutput,
   ShopeeListing,
+  ShopeeProject,
   ShopeeVisualStyle,
   SkuOption,
   VisionAnalysisResult,
@@ -77,18 +78,41 @@ const App: React.FC = () => {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [hasKey, setHasKey] = useState(false);
-  const [languageMode, setLanguageModeState] = useState<LanguageMode>(getLanguageMode());
+
+  // --- Project History ---
+  const [projects, setProjects] = useState<ShopeeProject[]>(() => loadProjects());
+  const [currentProjectId] = useState<string>(() => `proj_${Date.now()}`);
+
+  // Auto-save after phase completion
+  function autoSave(status: ShopeeProject['status']) {
+    if (!imagePreview) return;
+    const project: ShopeeProject = {
+      id: currentProjectId,
+      projectName: productName || '未命名',
+      status,
+      visualStyle,
+      products: [{ id: 'prod-1', imageBase64: imagePreview, name: productName }],
+      skuOptions,
+      listing: shopeeListing,
+      taskMap: {},
+      generationHistory: [],
+      processedImageUrl: processedImageBase64 || baseImageBase64 || undefined,
+      blurRegions: blurRegions.length > 0 ? blurRegions : undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    saveProject(project);
+    setProjects(loadProjects());
+  };
 
   // --- Check for API Key on mount ---
   useEffect(() => {
     const key = localStorage.getItem(LS_KEY);
-    if (!key) {
-      // Hardcoded key for development
-      localStorage.setItem(LS_KEY, 'sk-sfLfU1ZDLTVC8vYt8e22A188A34a4dEf911e4eB336E932D5');
-      setHasKey(true);
-    } else {
-      setHasKey(true);
+    // Always ensure APIMart key is set
+    if (!key || key.startsWith('sk-sfLf')) {
+      localStorage.setItem(LS_KEY, 'sk-9Ngi0kKF5aqdFzNzWVihFXDdAdFWyUUB2hYt1GcjoNInlDCC');
     }
+    setHasKey(true);
   }, []);
 
   // --- Error & Reset ---
@@ -181,6 +205,7 @@ const App: React.FC = () => {
       setShopeeListing(null);
       setVisionResult(null);
       setAppState(ShopeeAppState.PHASE1_READY);
+      autoSave('material_pending');
     } catch (e) {
       handleError(e, '分析過程中發生了意外錯誤，請稍候再試。');
     }
@@ -226,6 +251,7 @@ const App: React.FC = () => {
       setShopeeListing(listing);
       setVisionResult(vision);
       setAppState(ShopeeAppState.PHASE2_READY);
+      autoSave('listing_ready');
     } catch (e) {
       handleError(e, 'Listing 生成失敗，請稍候再試。');
     }
@@ -248,11 +274,50 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Language ---
-  const handleLanguageModeChange = (mode: LanguageMode) => {
-    if (mode === LanguageMode.EN) return;
-    setLanguageMode(mode);
-    setLanguageModeState(mode);
+  // --- Project History Handlers ---
+  const handleSelectProject = (project: ShopeeProject) => {
+    // Reset to project state
+    setProductName(project.projectName);
+    setVisualStyle(project.visualStyle);
+    setSkuOptions(project.skuOptions);
+    if (project.products?.[0]?.imageBase64) {
+      setImagePreview(project.products[0].imageBase64);
+      setSelectedFile(null);
+    }
+    if (project.blurRegions) setBlurRegions(project.blurRegions);
+    if (project.processedImageUrl) setProcessedImageBase64(project.processedImageUrl);
+
+    switch (project.status) {
+      case 'completed':
+      case 'generating':
+      case 'partial':
+        if (project.listing) setShopeeListing(project.listing);
+        setAppState(ShopeeAppState.PHASE3_GENERATING);
+        break;
+      case 'listing_ready':
+        if (project.listing) setShopeeListing(project.listing);
+        setAppState(ShopeeAppState.PHASE2_READY);
+        break;
+      case 'material_pending':
+      default:
+        setAppState(ShopeeAppState.IDLE);
+    }
+  };
+
+  const handleNewProject = () => {
+    setAppState(ShopeeAppState.IDLE);
+    setProductName('');
+    setBrandContext('');
+    setImagePreview(null);
+    setSelectedFile(null);
+    setDirectorOutput(null);
+    setShopeeListing(null);
+    setVisionResult(null);
+    setProcessedImageBase64(null);
+    setBaseImageBase64(null);
+    setBlurRegions([]);
+    setErrorMsg('');
+    setErrorType(null);
   };
 
   // --- Download ---
@@ -302,11 +367,23 @@ const App: React.FC = () => {
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-[#0f0f12] text-slate-200 selection:bg-purple-500 selection:text-white font-sans flex flex-col">
-      <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
-      <ApiKeyModal isOpen={isKeyModalOpen} onSave={(_key: string) => { setIsKeyModalOpen(false); setHasKey(true); }} />
+    <div className="min-h-screen bg-[#0f0f12] text-slate-200 selection:bg-purple-500 selection:text-white font-sans flex">
+      {/* Left Sidebar: Project History */}
+      <ProjectHistory
+        projects={projects}
+        activeProjectId={currentProjectId}
+        onSelect={handleSelectProject}
+        onDelete={() => setProjects(loadProjects())}
+        onNewProject={handleNewProject}
+        onProjectsChange={setProjects}
+      />
 
-      {/* Header */}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+        <ApiKeyModal isOpen={isKeyModalOpen} onSave={(_key: string) => { setIsKeyModalOpen(false); setHasKey(true); }} />
+
+        {/* Header */}
       <header className="w-full py-6 border-b border-white/5 bg-[#0f0f12]/90 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setAppState(ShopeeAppState.IDLE)}>
@@ -321,22 +398,6 @@ const App: React.FC = () => {
             <button onClick={() => setIsGuideOpen(true)} className="text-gray-400 hover:text-white text-sm font-medium transition-colors">
               功能導覽 v0.9
             </button>
-            <div className="flex items-center gap-2 bg-[#1a1a1f] rounded-lg p-1 border border-white/10">
-              <button
-                onClick={() => handleLanguageModeChange(LanguageMode.ZH_TW)}
-                className={`px-3 py-1 rounded text-xs font-bold transition-colors ${languageMode === LanguageMode.ZH_TW ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                繁體中文
-              </button>
-              <button
-                onClick={() => handleLanguageModeChange(LanguageMode.EN)}
-                disabled
-                className="px-3 py-1 rounded text-xs font-bold text-gray-500 cursor-not-allowed opacity-50"
-                title="英文模式開發中"
-              >
-                英文
-              </button>
-            </div>
             <button onClick={() => setIsKeyModalOpen(true)} className="text-purple-400 hover:text-purple-300 text-sm font-bold">
               {hasKey ? '更換 API Key' : '設定 API Key'}
             </button>
@@ -350,10 +411,10 @@ const App: React.FC = () => {
 
         {/* Loading States */}
         {appState === ShopeeAppState.PHASE1_ANALYZING && (
-          <LoadingOverlay title="AI 總監正在分析產品" description="正在解讀視覺特徵與生成行銷策略..." colorClass="purple" />
+          <LoadingOverlay title="AI 總監正在分析產品" description="正在解讀視覺特徵與生成行銷策略..." colorClass="purple" timeEstimate="預計需要 30-60 秒" />
         )}
         {appState === ShopeeAppState.PHASE2_PROCESSING && (
-          <LoadingOverlay title="正在生成蝦皮 Listing" description="正在生成 SEO 標題、產品描述、圖片 Prompt 與合規檢查..." colorClass="blue" />
+          <LoadingOverlay title="正在生成蝦皮 Listing" description="正在生成 SEO 標題、產品描述、圖片 Prompt 與合規檢查..." colorClass="blue" timeEstimate="預計需要 1-2 分鐘，請耐心等候" />
         )}
 
         {/* Idle View */}
@@ -551,6 +612,7 @@ const App: React.FC = () => {
         phaseName={`Phase ${debugModalPhase}`}
         onClose={() => setDebugModalPhase(null)}
       />
+      </div>
     </div>
   );
 };

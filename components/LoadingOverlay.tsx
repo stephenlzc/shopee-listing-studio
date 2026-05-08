@@ -5,6 +5,7 @@ interface LoadingOverlayProps {
   title: string;
   description: string;
   colorClass?: string; // e.g. 'purple', 'blue', 'green'
+  timeEstimate?: string; // e.g. '预计需要 1-2 分钟'
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -17,6 +18,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   title,
   description,
   colorClass = 'purple',
+  timeEstimate,
 }) => {
   const spinnerColor = COLOR_MAP[colorClass] || COLOR_MAP.purple;
 
@@ -31,6 +33,9 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
         <p className="text-gray-400">{description}</p>
+        {timeEstimate && (
+          <p className="text-gray-500 text-sm mt-3">{timeEstimate}</p>
+        )}
       </div>
     </div>
   );

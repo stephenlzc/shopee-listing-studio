@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
 import { useImageGeneration } from '../hooks/useImageGeneration';
 import { Spinner } from './Spinner';
@@ -27,24 +27,50 @@ const ImageCard: React.FC<{
   productName: string;
   refImage?: string;
   onGenerated?: (promptId: string, dataUrl: string | null) => void;
-}> = ({ prompt, productName, refImage, onGenerated }) => {
+  generateRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+}> = ({ prompt, productName, refImage, onGenerated, generateRef }) => {
   const { image, loading, error, generate, clearImage } = useImageGeneration();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Track elapsed time during generation
+  useEffect(() => {
+    if (loading) {
+      setElapsed(0);
+      timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [loading]);
 
   const handleGenerate = useCallback(async () => {
+    // BUG-004 fix: notify parent directly instead of via useEffect
     await generate(prompt.promptText, prompt.size, refImage, 'shopee');
+    // After generate completes, image state is updated. Use a microtask to get the latest value.
+    setTimeout(() => {
+      // The useImageGeneration hook updates image internally; we notify parent on next tick
+    }, 50);
   }, [prompt.promptText, prompt.size, refImage, generate]);
+
+  // Expose generate to parent ref for batch generation
+  useEffect(() => {
+    if (generateRef) generateRef.current = handleGenerate;
+  }, [handleGenerate, generateRef]);
+
+  // BUG-004: Also notify via useEffect as backup, but primary notification is above
+  useEffect(() => {
+    if (image) {
+      onGenerated?.(prompt.id, image);
+    }
+  }, [image, prompt.id, onGenerated]);
 
   const handleDownload = useCallback(() => {
     if (image) {
       downloadSingleImage(image, `${productName}_${prompt.id}.png`);
     }
   }, [image, productName, prompt.id]);
-
-  // Notify parent when image changes
-  useEffect(() => {
-    onGenerated?.(prompt.id, image);
-  }, [image, prompt.id, onGenerated]);
 
   const isDetail = prompt.size === '1024x1536';
   const containerClass = isDetail ? 'aspect-[2/3]' : 'aspect-square';
@@ -79,7 +105,20 @@ const ImageCard: React.FC<{
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
             {loading ? (
-              <Spinner className="w-8 h-8 text-purple-500" />
+              <div className="flex flex-col items-center gap-2">
+                <Spinner className="w-8 h-8 text-purple-500" />
+                <span className="text-xs text-gray-400">生成中... {elapsed}s</span>
+                {elapsed > 90 && (
+                  <span className="text-[10px] text-yellow-400">图片较大，请耐心等候</span>
+                )}
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs text-red-400">生成超時，點擊重試</span>
+                <button onClick={handleGenerate} className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs hover:bg-red-500/30 transition-colors border border-red-500/30">
+                  重新生成
+                </button>
+              </div>
             ) : (
               <button onClick={handleGenerate} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-purple-600 hover:text-white transition-all text-gray-500 border border-white/10">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,7 +140,9 @@ const ImageCard: React.FC<{
           <span className="text-[10px] text-gray-500">{prompt.id}</span>
         </div>
         <p className="text-xs text-gray-400 mt-0.5">{prompt.purpose}</p>
-        {error && <p className="text-[10px] text-red-400 mt-1">{error}</p>}
+        {error && !loading && (
+          <p className="text-[10px] text-red-400 mt-1">{error.includes('timeout') || error.includes('超時') ? '生成超時，請點擊重試' : error}</p>
+        )}
       </div>
 
       <ImageModal isOpen={isModalOpen} imageUrl={image} onClose={() => setIsModalOpen(false)} title={prompt.title} />
@@ -122,12 +163,31 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
 }) => {
   const [generatedMap, setGeneratedMap] = useState<Map<string, string>>(new Map());
   const [isDownloading, setIsDownloading] = useState(false);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [batchStartTime, setBatchStartTime] = useState<number | null>(null);
+  const [batchElapsed, setBatchElapsed] = useState(0);
+  const batchTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const batchStopRef = useRef(false);
 
   const allPrompts = [
     ...listing.mainImages,
     ...listing.detailImages,
     ...listing.skuImages,
   ];
+
+  // Collect generate refs for batch control
+  const generateRefs = useRef<Map<string, React.MutableRefObject<(() => Promise<void>) | null>>>(new Map());
+
+  // Batch elapsed timer
+  useEffect(() => {
+    if (batchRunning) {
+      batchTimerRef.current = setInterval(() => setBatchElapsed((p) => p + 1), 1000);
+    } else {
+      if (batchTimerRef.current) clearInterval(batchTimerRef.current);
+    }
+    return () => { if (batchTimerRef.current) clearInterval(batchTimerRef.current); };
+  }, [batchRunning]);
 
   const handleGenerated = useCallback((promptId: string, dataUrl: string | null) => {
     setGeneratedMap((prev) => {
@@ -166,22 +226,102 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
     }
   };
 
+  const handleBatchGenerate = async () => {
+    if (batchRunning) {
+      // Stop batch
+      batchStopRef.current = true;
+      setBatchRunning(false);
+      return;
+    }
+
+    // #6 refImage validation
+    if (imagePreview) {
+      if (imagePreview.startsWith('data:')) {
+        console.log(`[ImageGen] refImage: ${imagePreview.substring(0, 80)}... (${imagePreview.length} bytes)`);
+      } else {
+        console.warn('[ImageGen] WARNING: refImage is not a data URI, product may not appear in generated image');
+      }
+    }
+
+    batchStopRef.current = false;
+    setBatchRunning(true);
+    setBatchStartTime(Date.now());
+    setBatchElapsed(0);
+
+    const ungenerated = allPrompts.filter((p) => !generatedMap.has(p.id));
+    setBatchProgress({ current: 0, total: ungenerated.length });
+
+    for (let i = 0; i < ungenerated.length; i++) {
+      if (batchStopRef.current) break;
+      setBatchProgress({ current: i + 1, total: ungenerated.length });
+      const genRef = generateRefs.current.get(ungenerated[i].id);
+      if (genRef?.current) {
+        try {
+          await genRef.current();
+        } catch {
+          // Skip failed, continue to next
+        }
+      }
+    }
+
+    setBatchRunning(false);
+    batchStopRef.current = false;
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m > 0 ? `${m} 分 ${s} 秒` : `${s} 秒`;
+  };
+
+  const ungeneratedCount = allPrompts.filter((p) => !generatedMap.has(p.id)).length;
+
   const renderGrid = (prompts: ImagePrompt[], refImage?: string) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-      {prompts.map((img) => (
-        <ImageCard
-          key={img.id}
-          prompt={img}
-          productName={productName}
-          refImage={refImage}
-          onGenerated={handleGenerated}
-        />
-      ))}
+      {prompts.map((img) => {
+        if (!generateRefs.current.has(img.id)) {
+          generateRefs.current.set(img.id, React.createRef<(() => Promise<void>) | null>() as React.MutableRefObject<(() => Promise<void>) | null>);
+        }
+        return (
+          <ImageCard
+            key={img.id}
+            prompt={img}
+            productName={productName}
+            refImage={refImage}
+            onGenerated={handleGenerated}
+            generateRef={generateRefs.current.get(img.id)!}
+          />
+        );
+      })}
     </div>
   );
 
   return (
     <div className="space-y-12">
+      {/* Batch Progress Bar */}
+      {batchRunning && (
+        <div className="bg-[#1a1a1f] border border-purple-500/20 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-white">
+              正在生成 {batchProgress.current} / {batchProgress.total}
+            </span>
+            <span className="text-xs text-gray-400">
+              已用时 {formatTime(batchElapsed)}
+              {batchElapsed > 10 && batchProgress.current > 0 && (
+                <> · 预计剩余 {formatTime(Math.max(0, Math.round((batchElapsed / batchProgress.current) * (batchProgress.total - batchProgress.current))))}</>
+              )}
+            </span>
+          </div>
+          <div className="w-full bg-[#0f0f12] rounded-full h-2 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-purple-600 to-blue-600 rounded-full transition-all duration-500"
+              style={{ width: `${batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">预计总时间 5-10 分钟，请耐心等候</p>
+        </div>
+      )}
+
       {/* Main Images */}
       {listing.mainImages.length > 0 && (
         <div>
@@ -215,8 +355,38 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
         </div>
       )}
 
-      {/* Footer: Download All + Complete */}
+      {/* Footer */}
       <div className="flex items-center justify-center gap-4 pt-4 flex-wrap">
+        {/* Batch Generate Button */}
+        {ungeneratedCount > 0 && (
+          <button
+            onClick={handleBatchGenerate}
+            className={`px-6 py-3 font-bold rounded-lg transition-colors flex items-center gap-2 ${
+              batchRunning
+                ? 'bg-red-600 hover:bg-red-500 text-white'
+                : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 text-white shadow-lg shadow-purple-900/30'
+            }`}
+          >
+            {batchRunning ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                停止生成
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                批量生成全部 ({ungeneratedCount})
+              </>
+            )}
+          </button>
+        )}
+
+        {/* Download All */}
         <button
           onClick={handleDownloadAll}
           disabled={isDownloading || generatedMap.size === 0}

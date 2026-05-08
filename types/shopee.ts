@@ -11,10 +11,17 @@ export interface ImageGenerationParams {
   model: 'gpt-image-2';
   prompt: string;
   n?: number;
+  /** pixel-based size (mapped to aspect ratio for APIMart internally) */
   size?: '1024x1024' | '1024x1536' | '1536x1024' | '2048x2048' | '2048x1152' | '3840x2160' | '2160x3840';
+  /** APIMart resolution tier */
+  resolution?: '1k' | '2k' | '4k';
+  /** @deprecated not supported by APIMart */
   quality?: 'low' | 'medium' | 'high';
-  image?: string; // base64 Data URI
+  /** reference image as base64 Data URI (mapped to image_urls for APIMart) */
+  image?: string;
+  /** @deprecated not supported by APIMart */
   background?: 'auto' | 'transparent' | 'opaque';
+  /** @deprecated not supported by APIMart */
   output_format?: 'png' | 'jpeg';
 }
 
