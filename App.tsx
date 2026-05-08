@@ -565,48 +565,53 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Phase 2: Listing Review */}
-            {showPhase2 && shopeeListing && (
-              <Phase2Section
-                listing={shopeeListing}
-                visionResult={visionResult}
-                productName={productName}
-                imagePreview={imagePreview}
-                processedImageBase64={processedImageBase64}
-                blurRegions={blurRegions}
-                baseImageBase64={baseImageBase64}
-                baseImageGenerating={baseImageGenerating}
-                onImageProcessed={(base64, regions) => {
-                  setProcessedImageBase64(base64);
-                  setBlurRegions(regions);
-                  setBaseImageBase64(null);
-                }}
-                onGenerateBaseImage={handleGenerateBaseImage}
-                onDownloadReport={handleDownloadListing}
-                onProceedToPhase3={() => setAppState(ShopeeAppState.PHASE3_GENERATING)}
-                appState={appState}
-              />
-            )}
+          </div>
+        )}
 
-            {/* Phase 3: Image Production */}
-            {showPhase3 && shopeeListing && (
-              <div className="border-t border-white/10 pt-12 mt-12">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-bold">3</div>
-                  <h2 className="text-2xl font-bold text-white">Phase 3: 圖片生產</h2>
-                </div>
-                <p className="text-gray-400 text-sm mb-8">
-                  逐張生成圖片。主圖 1024×1024，詳情圖 1024×1536。圖片生成需 30-90 秒，請耐心等候。
-                </p>
-                <ShopeeImageGrid
-                  listing={shopeeListing}
-                  productName={productName}
-                  imagePreview={baseImageBase64 || processedImageBase64 || imagePreview}
-                  onComplete={() => setAppState(ShopeeAppState.PHASE3_COMPLETE)}
-                  isComplete={appState === ShopeeAppState.PHASE3_COMPLETE}
-                />
+        {/* Phase 2: Listing Review (independent of Phase 1 results) */}
+        {showPhase2 && shopeeListing && (
+          <div className="w-full max-w-6xl mx-auto px-4 pb-20">
+            <Phase2Section
+              listing={shopeeListing}
+              visionResult={visionResult}
+              productName={productName}
+              imagePreview={imagePreview}
+              processedImageBase64={processedImageBase64}
+              blurRegions={blurRegions}
+              baseImageBase64={baseImageBase64}
+              baseImageGenerating={baseImageGenerating}
+              onImageProcessed={(base64, regions) => {
+                setProcessedImageBase64(base64);
+                setBlurRegions(regions);
+                setBaseImageBase64(null);
+              }}
+              onGenerateBaseImage={handleGenerateBaseImage}
+              onDownloadReport={handleDownloadListing}
+              onProceedToPhase3={() => setAppState(ShopeeAppState.PHASE3_GENERATING)}
+              appState={appState}
+            />
+          </div>
+        )}
+
+        {/* Phase 3: Image Production (independent of Phase 1 results) */}
+        {showPhase3 && shopeeListing && (
+          <div className="w-full max-w-6xl mx-auto px-4 pb-20">
+            <div className="border-t border-white/10 pt-12">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-bold">3</div>
+                <h2 className="text-2xl font-bold text-white">Phase 3: 圖片生產</h2>
               </div>
-            )}
+              <p className="text-gray-400 text-sm mb-8">
+                逐張生成圖片。主圖 1024×1024，詳情圖 1024×1536。圖片生成需 30-90 秒，請耐心等候。
+              </p>
+              <ShopeeImageGrid
+                listing={shopeeListing}
+                productName={productName}
+                imagePreview={baseImageBase64 || processedImageBase64 || imagePreview}
+                onComplete={() => setAppState(ShopeeAppState.PHASE3_COMPLETE)}
+                isComplete={appState === ShopeeAppState.PHASE3_COMPLETE}
+              />
+            </div>
           </div>
         )}
       </main>
