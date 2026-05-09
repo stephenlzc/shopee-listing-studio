@@ -95,7 +95,7 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({
 
   return (
     <div
-      className={`flex-shrink-0 transition-all duration-300 border-r border-white/10 bg-[#0d0d10] flex flex-col ${
+      className={`flex-shrink-0 transition-all duration-300 border-r border-white/10 bg-[#0d0d10] flex flex-col sticky top-0 h-screen overflow-y-auto ${
         expanded ? 'w-[280px]' : 'w-[40px]'
       }`}
     >
