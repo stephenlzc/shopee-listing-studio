@@ -306,10 +306,15 @@ const App: React.FC = () => {
         if (project.listing) setShopeeListing(project.listing);
         setAppState(ShopeeAppState.PHASE3_GENERATING);
         break;
-      case 'listing_ready':
+      case 'listing_ready': {
         if (project.listing) setShopeeListing(project.listing);
-        setAppState(ShopeeAppState.PHASE2_READY);
+        // If images were previously generated, go directly to Phase 3
+        const hasSavedImages = (() => {
+          try { return !!localStorage.getItem('gen-imgs-' + project.id); } catch { return false; }
+        })();
+        setAppState(hasSavedImages ? ShopeeAppState.PHASE3_GENERATING : ShopeeAppState.PHASE2_READY);
         break;
+      }
       case 'material_pending':
       default:
         setAppState(ShopeeAppState.IDLE);
