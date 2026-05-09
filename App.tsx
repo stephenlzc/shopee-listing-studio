@@ -587,7 +587,7 @@ const App: React.FC = () => {
               }}
               onGenerateBaseImage={handleGenerateBaseImage}
               onDownloadReport={handleDownloadListing}
-              onProceedToPhase3={() => setAppState(ShopeeAppState.PHASE3_GENERATING)}
+              onProceedToPhase3={() => { setAppState(ShopeeAppState.PHASE3_GENERATING); autoSave('generating', shopeeListing); }}
               appState={appState}
             />
           </div>
@@ -609,7 +609,7 @@ const App: React.FC = () => {
                 productName={productName}
                 imagePreview={baseImageBase64 || processedImageBase64 || imagePreview}
                 projectId={currentProjectId}
-                onComplete={() => setAppState(ShopeeAppState.PHASE3_COMPLETE)}
+                onComplete={() => { setAppState(ShopeeAppState.PHASE3_COMPLETE); autoSave('completed', shopeeListing); }}
                 isComplete={appState === ShopeeAppState.PHASE3_COMPLETE}
               />
             </div>
