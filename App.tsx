@@ -608,6 +608,7 @@ const App: React.FC = () => {
                 listing={shopeeListing}
                 productName={productName}
                 imagePreview={baseImageBase64 || processedImageBase64 || imagePreview}
+                projectId={currentProjectId}
                 onComplete={() => setAppState(ShopeeAppState.PHASE3_COMPLETE)}
                 isComplete={appState === ShopeeAppState.PHASE3_COMPLETE}
               />

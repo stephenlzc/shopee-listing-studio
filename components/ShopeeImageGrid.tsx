@@ -14,6 +14,7 @@ interface ShopeeImageGridProps {
   listing: ShopeeListing;
   productName: string;
   imagePreview: string | null;
+  projectId?: string;
   onComplete?: () => void;
   isComplete?: boolean;
 }
@@ -154,14 +155,33 @@ const ImageCard: React.FC<{
 // Main Component
 // ============================================================================
 
+const IMG_STORAGE_PREFIX = 'gen-imgs-';
+
+function loadImages(projectId: string): Map<string, string> {
+  try {
+    const raw = localStorage.getItem(IMG_STORAGE_PREFIX + projectId);
+    if (!raw) return new Map();
+    return new Map(JSON.parse(raw));
+  } catch { return new Map(); }
+}
+
+function saveImages(projectId: string, map: Map<string, string>) {
+  try {
+    localStorage.setItem(IMG_STORAGE_PREFIX + projectId, JSON.stringify([...map]));
+  } catch { /* quota exceeded, skip */ }
+}
+
 export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
   listing,
   productName,
   imagePreview,
+  projectId,
   onComplete,
   isComplete,
 }) => {
-  const [generatedMap, setGeneratedMap] = useState<Map<string, string>>(new Map());
+  const [generatedMap, setGeneratedMap] = useState<Map<string, string>>(
+    () => projectId ? loadImages(projectId) : new Map()
+  );
   const [isDownloading, setIsDownloading] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
@@ -194,9 +214,10 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
       const next = new Map(prev);
       if (dataUrl) next.set(promptId, dataUrl);
       else next.delete(promptId);
+      if (projectId) saveImages(projectId, next);
       return next;
     });
-  }, []);
+  }, [projectId]);
 
   const handleDownloadAll = async () => {
     if (generatedMap.size === 0) return;
