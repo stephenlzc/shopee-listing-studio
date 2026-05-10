@@ -18,7 +18,7 @@
 | 副标题 | ✅ PASS | "一鍵生成 6 張主圖 + 4-6 張詳情圖 + SKU 圖" |
 | InputForm 渲染 | ✅ PASS | 产品名称、品牌、类型、规格、容量、特色、场景、风格 |
 | 视觉风格下拉 | ✅ PASS | 20 个选项，4 组（基础/情感/场景/特殊） |
-| Footer 渲染 | ✅ PASS | "© 2026 FlyPig AI - 艾可開發股份有限公司" |
+| Footer 渲染 | ✅ PASS | "AI Product Marketing Designer · Shopee Edition" |
 | 无 React 控制台错误 | ✅ PASS | 仅有 React DevTools 提示 |
 
 ## 发现的问题

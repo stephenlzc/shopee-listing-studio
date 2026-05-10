@@ -5,7 +5,6 @@
 
 import { useState, useCallback } from 'react';
 import { generateImage, b64JsonToDataUri } from '../services/imageGenService';
-import { getCachedImage, setCachedImage } from '../utils/imageCache';
 import { AppError } from '../utils/errorHandler';
 import type { ImageGenerationParams } from '../types/shopee';
 
@@ -40,14 +39,6 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
       setError(null);
 
       try {
-        // 檢查快取
-        const cached = getCachedImage(prompt, size, refImageBase64, cacheContext);
-        if (cached) {
-          setImage(cached);
-          setLoading(false);
-          return;
-        }
-
         const params: ImageGenerationParams = {
           model: 'gpt-image-2',
           prompt,
@@ -72,7 +63,6 @@ export const useImageGeneration = (): UseImageGenerationReturn => {
           throw new Error('No image data in response');
         }
 
-        setCachedImage(prompt, size, imageData, refImageBase64, cacheContext);
         setImage(imageData);
       } catch (err) {
         if (err instanceof AppError) {

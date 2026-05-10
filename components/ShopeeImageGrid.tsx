@@ -4,6 +4,7 @@ import { useImageGeneration } from '../hooks/useImageGeneration';
 import { Spinner } from './Spinner';
 import { ImageModal } from './ImageModal';
 import { downloadSingleImage } from '../utils/imageDownloader';
+import { saveProjectImage, loadProjectImages } from '../services/storageService';
 import type { ShopeeListing, ImagePrompt } from '../types/shopee';
 
 // ============================================================================
@@ -155,20 +156,21 @@ const ImageCard: React.FC<{
 // Main Component
 // ============================================================================
 
-const IMG_STORAGE_PREFIX = 'gen-imgs-';
-
-function loadImages(projectId: string): Map<string, string> {
+async function persistImage(projectId: string, promptId: string, dataUrl: string) {
   try {
-    const raw = localStorage.getItem(IMG_STORAGE_PREFIX + projectId);
-    if (!raw) return new Map();
-    return new Map(JSON.parse(raw));
-  } catch { return new Map(); }
+    await saveProjectImage(projectId, promptId, dataUrl);
+  } catch (err) {
+    console.error('Failed to save image to IndexedDB:', err);
+  }
 }
 
-function saveImages(projectId: string, map: Map<string, string>) {
+async function restoreImages(projectId: string): Promise<Map<string, string>> {
   try {
-    localStorage.setItem(IMG_STORAGE_PREFIX + projectId, JSON.stringify([...map]));
-  } catch { /* quota exceeded, skip */ }
+    const images = await loadProjectImages(projectId);
+    return new Map(Object.entries(images));
+  } catch {
+    return new Map();
+  }
 }
 
 export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
@@ -179,9 +181,7 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
   onComplete,
   isComplete,
 }) => {
-  const [generatedMap, setGeneratedMap] = useState<Map<string, string>>(
-    () => projectId ? loadImages(projectId) : new Map()
-  );
+  const [generatedMap, setGeneratedMap] = useState<Map<string, string>>(new Map());
   const [isDownloading, setIsDownloading] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
@@ -199,6 +199,15 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
   // Collect generate refs for batch control
   const generateRefs = useRef<Map<string, React.MutableRefObject<(() => Promise<void>) | null>>>(new Map());
 
+  // Load saved images when projectId changes
+  useEffect(() => {
+    if (projectId) {
+      restoreImages(projectId).then(setGeneratedMap);
+    } else {
+      setGeneratedMap(new Map());
+    }
+  }, [projectId]);
+
   // Batch elapsed timer
   useEffect(() => {
     if (batchRunning) {
@@ -212,9 +221,12 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
   const handleGenerated = useCallback((promptId: string, dataUrl: string | null) => {
     setGeneratedMap((prev) => {
       const next = new Map(prev);
-      if (dataUrl) next.set(promptId, dataUrl);
-      else next.delete(promptId);
-      if (projectId) saveImages(projectId, next);
+      if (dataUrl) {
+        next.set(promptId, dataUrl);
+        if (projectId) persistImage(projectId, promptId, dataUrl);
+      } else {
+        next.delete(promptId);
+      }
       return next;
     });
   }, [projectId]);

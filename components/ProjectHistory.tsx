@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
+import { deleteProjectFromDB } from '../services/storageService';
 import type { ShopeeProject, ShopeeAppState } from '../types/shopee';
 
 const STORAGE_KEY = 'shopee-projects-v1';
@@ -80,6 +81,7 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({
     (id: string) => {
       if (confirmDelete === id) {
         const updated = deleteProject(id);
+        deleteProjectFromDB(id).catch(() => {});
         onProjectsChange(updated);
         onDelete(id);
         setConfirmDelete(null);

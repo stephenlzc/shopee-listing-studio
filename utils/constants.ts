@@ -65,13 +65,6 @@ export const INPUT_LIMITS = {
   REF_COPY_MAX: 10000,
 } as const;
 
-// 快取配置
-export const CACHE_CONFIG = {
-  IMAGE_CACHE_PREFIX: 'shopee_image_',
-  IMAGE_CACHE_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7 days
-  MAX_CACHE_SIZE: 50 * 1024 * 1024, // 50MB
-} as const;
-
 // 圖片比例
 export const ASPECT_RATIOS = {
   SQUARE: '1:1' as const,

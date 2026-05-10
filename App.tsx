@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { analyzeProductAndGenerateStrategy, generateShopeeListing } from './services/listingService';
 import { analyzeImageText } from './services/visionService';
 import { generateProductBase } from './services/baseImageService';
+import { mergeProjectToDB, loadProjectFromDB } from './services/storageService';
 import { GuideModal } from './components/GuideModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { ProductCard } from './components/ProductCard';
@@ -111,6 +112,7 @@ const App: React.FC = () => {
       updatedAt: Date.now(),
     };
     saveProject(project);
+    mergeProjectToDB(project).catch(() => {});
     setProjects(loadProjects());
   }
 
@@ -284,35 +286,42 @@ const App: React.FC = () => {
   };
 
   // --- Project History Handlers ---
-  const handleSelectProject = (project: ShopeeProject) => {
-    // Adopt project ID so subsequent saves update this project
+  const handleSelectProject = async (project: ShopeeProject) => {
     setCurrentProjectId(project.id);
 
-    // Reset to project state
-    setProductName(project.projectName);
-    setVisualStyle(project.visualStyle);
-    setSkuOptions(project.skuOptions);
-    if (project.products?.[0]?.imageBase64) {
-      setImagePreview(project.products[0].imageBase64);
+    // Restore from IndexedDB for full data (including images)
+    let fullProject = await loadProjectFromDB(project.id);
+
+    // If project doesn't exist in IndexedDB yet (migrated from old localStorage),
+    // seed it now so subsequent image saves work
+    if (!fullProject) {
+      fullProject = { ...project, images: project.images || {} };
+      mergeProjectToDB(fullProject).catch(() => {});
+    }
+
+    setProductName(fullProject.projectName);
+    setVisualStyle(fullProject.visualStyle);
+    setSkuOptions(fullProject.skuOptions);
+    if (fullProject.products?.[0]?.imageBase64) {
+      setImagePreview(fullProject.products[0].imageBase64);
       setSelectedFile(null);
     }
-    if (project.blurRegions) setBlurRegions(project.blurRegions);
-    if (project.processedImageUrl) setProcessedImageBase64(project.processedImageUrl);
+    if (fullProject.blurRegions) setBlurRegions(fullProject.blurRegions);
+    if (fullProject.processedImageUrl) setProcessedImageBase64(fullProject.processedImageUrl);
 
-    switch (project.status) {
+    const resolvedListing = fullProject.listing;
+    const hasImages = !!(fullProject.images && Object.keys(fullProject.images).length > 0);
+
+    switch (fullProject.status) {
       case 'completed':
       case 'generating':
       case 'partial':
-        if (project.listing) setShopeeListing(project.listing);
+        if (resolvedListing) setShopeeListing(resolvedListing);
         setAppState(ShopeeAppState.PHASE3_GENERATING);
         break;
       case 'listing_ready': {
-        if (project.listing) setShopeeListing(project.listing);
-        // If images were previously generated, go directly to Phase 3
-        const hasSavedImages = (() => {
-          try { return !!localStorage.getItem('gen-imgs-' + project.id); } catch { return false; }
-        })();
-        setAppState(hasSavedImages ? ShopeeAppState.PHASE3_GENERATING : ShopeeAppState.PHASE2_READY);
+        if (resolvedListing) setShopeeListing(resolvedListing);
+        setAppState(hasImages ? ShopeeAppState.PHASE3_GENERATING : ShopeeAppState.PHASE2_READY);
         break;
       }
       case 'material_pending':
@@ -623,7 +632,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="w-full py-6 text-center border-t border-white/5 text-xs text-gray-600">
-        © 2026 <a href="https://flypigai.icareu.tw/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-purple-400 transition-colors font-bold">FlyPig AI - 艾可開發股份有限公司</a>. All rights reserved.
+        AI Product Marketing Designer · Shopee Edition
       </footer>
 
       <DebugPromptModal

@@ -222,6 +222,7 @@ export interface ShopeeProject {
   products: ShopeeProduct[];
   skuOptions: SkuOption[];
   listing: ShopeeListing | null;
+  images?: Record<string, string>;   // promptId → base64 Data URI
   taskMap: Record<string, string>;   // promptId → taskId
   generationHistory: GenerationHistory[];
   processedImageUrl?: string;

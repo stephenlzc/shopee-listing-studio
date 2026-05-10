@@ -189,10 +189,6 @@ v0.8 採用專業的廣告製作流程：
 
 ---
 
-## © License
+## License
 
 **[MIT License](./LICENSE)**
-
-Open sourced by [FlyPig AI - 艾可開發股份有限公司](https://flypigai.icareu.tw/)
-
-Copyright (c) 2026 FlyPig AI - 艾可開發股份有限公司. All rights reserved.

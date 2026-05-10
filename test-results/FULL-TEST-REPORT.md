@@ -34,7 +34,7 @@
 | L1-5 | 副标题 | ✅ PASS | "一鍵生成 6 張主圖 + 4-6 張詳情圖 + SKU 圖" |
 | L1-6 | InputForm 渲染 | ✅ PASS | 10 个字段全部渲染 |
 | L1-7 | 视觉风格下拉 | ✅ PASS | 20 选项，4 组（基础/情感/场景/特殊） |
-| L1-8 | Footer | ✅ PASS | FlyPig AI 链接 |
+| L1-8 | Footer | ✅ PASS | Shopee Edition footer |
 | L1-9 | 控制台无 React 错误 | ✅ PASS | 仅有 React DevTools 提示 |
 
 ### 发现的问题
