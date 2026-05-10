@@ -158,6 +158,8 @@ src/
 - 新增日夜主題切換
 - API Key 管理從硬編碼遷移至環境變數
 
+詳細的程式碼差異分析報告請見：[Git Diff Report](./test-results/GIT-DIFF-REPORT.md)
+
 ## License
 
 **[MIT License](./LICENSE)**
