@@ -77,12 +77,12 @@ const ImageCard: React.FC<{
   const isDetail = prompt.size === '1024x1536';
   const containerClass = isDetail ? 'aspect-[2/3]' : 'aspect-square';
   const labelClass = isDetail
-    ? 'bg-pink-500/20 text-pink-300 border-pink-500/30'
-    : 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+    ? 'bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-300 border-pink-300 dark:border-pink-500/30'
+    : 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border-blue-300 dark:border-blue-500/30';
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={`relative rounded-xl overflow-hidden bg-[#15151a] border border-white/10 shadow-lg ${containerClass}`}>
+      <div className={`relative rounded-xl overflow-hidden bg-gray-100 dark:bg-[#15151a] border border-gray-200 dark:border-white/10 shadow-lg ${containerClass}`}>
         {image ? (
           <div className="relative w-full h-full group">
             <img src={image} alt={prompt.title} className="w-full h-full object-cover" />
@@ -109,20 +109,20 @@ const ImageCard: React.FC<{
             {loading ? (
               <div className="flex flex-col items-center gap-2">
                 <Spinner className="w-8 h-8 text-purple-500" />
-                <span className="text-xs text-gray-400">生成中... {elapsed}s</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">生成中... {elapsed}s</span>
                 {elapsed > 90 && (
-                  <span className="text-[10px] text-yellow-400">图片较大，请耐心等候</span>
+                  <span className="text-[10px] text-yellow-600 dark:text-yellow-400">图片较大，请耐心等候</span>
                 )}
               </div>
             ) : error ? (
               <div className="flex flex-col items-center gap-2">
-                <span className="text-xs text-red-400">生成超時，點擊重試</span>
-                <button onClick={handleGenerate} className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs hover:bg-red-500/30 transition-colors border border-red-500/30">
+                <span className="text-xs text-red-500 dark:text-red-400">生成超時，點擊重試</span>
+                <button onClick={handleGenerate} className="px-3 py-1 bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 rounded-lg text-xs hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors border border-red-300 dark:border-red-500/30">
                   重新生成
                 </button>
               </div>
             ) : (
-              <button onClick={handleGenerate} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-purple-600 hover:text-white transition-all text-gray-500 border border-white/10">
+              <button onClick={handleGenerate} className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center hover:bg-purple-600 hover:text-white transition-all text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -138,12 +138,12 @@ const ImageCard: React.FC<{
 
       <div>
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-bold text-white leading-tight">{prompt.title}</h4>
-          <span className="text-[10px] text-gray-500">{prompt.id}</span>
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{prompt.title}</h4>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">{prompt.id}</span>
         </div>
-        <p className="text-xs text-gray-400 mt-0.5">{prompt.purpose}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{prompt.purpose}</p>
         {error && !loading && (
-          <p className="text-[10px] text-red-400 mt-1">{error.includes('timeout') || error.includes('超時') ? '生成超時，請點擊重試' : error}</p>
+          <p className="text-[10px] text-red-500 dark:text-red-400 mt-1">{error.includes('timeout') || error.includes('超時') ? '生成超時，請點擊重試' : error}</p>
         )}
       </div>
 
@@ -333,32 +333,32 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
     <div className="space-y-12">
       {/* Batch Progress Bar */}
       {batchRunning && (
-        <div className="bg-[#1a1a1f] border border-purple-500/20 rounded-xl p-4">
+        <div className="bg-gray-50 dark:bg-[#1a1a1f] border border-purple-300 dark:border-purple-500/20 rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-gray-900 dark:text-white">
               正在生成 {batchProgress.current} / {batchProgress.total}
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               已用时 {formatTime(batchElapsed)}
               {batchElapsed > 10 && batchProgress.current > 0 && (
                 <> · 预计剩余 {formatTime(Math.max(0, Math.round((batchElapsed / batchProgress.current) * (batchProgress.total - batchProgress.current))))}</>
               )}
             </span>
           </div>
-          <div className="w-full bg-[#0f0f12] rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-gray-200 dark:bg-[#0f0f12] rounded-full h-2 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-purple-600 to-blue-600 rounded-full transition-all duration-500"
               style={{ width: `${batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0}%` }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">预计总时间 5-10 分钟，请耐心等候</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">预计总时间 5-10 分钟，请耐心等候</p>
         </div>
       )}
 
       {/* Main Images */}
       {listing.mainImages.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
             主圖 (Main Images · 1:1 · 1024×1024)
           </h3>
@@ -369,7 +369,7 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
       {/* Detail Images */}
       {listing.detailImages.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <span className="w-2 h-6 bg-pink-500 rounded-full"></span>
             詳情圖 (Detail Images · 2:3 · 1024×1536)
           </h3>
@@ -380,7 +380,7 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
       {/* SKU Images */}
       {listing.skuImages.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <span className="w-2 h-6 bg-green-500 rounded-full"></span>
             SKU 圖 (SKU Images · 1:1 · 1024×1024)
           </h3>
@@ -451,7 +451,7 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
         )}
 
         {isComplete && (
-          <div className="inline-block px-4 py-3 bg-green-900/30 border border-green-500/30 text-green-400 rounded-lg text-sm font-bold">
+          <div className="inline-block px-4 py-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-500/30 text-green-600 dark:text-green-400 rounded-lg text-sm font-bold">
             全部圖片已完成
           </div>
         )}

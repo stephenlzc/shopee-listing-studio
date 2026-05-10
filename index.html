@@ -8,27 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <style>
       body {
-        background-color: #0f0f12; /* Deep dark background */
-        color: #e2e8f0;
         font-family: 'Inter', sans-serif;
       }
       h1, h2, h3, .serif {
         font-family: 'Playfair Display', serif;
       }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1a1a1f; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
-      }
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #e5e7eb; }
+      .dark ::-webkit-scrollbar-track { background: #1a1a1f; }
+      ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; }
+      .dark ::-webkit-scrollbar-thumb { background: #475569; }
+      ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+      .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
   <body>

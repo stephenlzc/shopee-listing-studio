@@ -9,9 +9,9 @@ interface LoadingOverlayProps {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  purple: 'text-purple-600',
-  blue: 'text-blue-600',
-  green: 'text-green-600',
+  purple: 'text-purple-600 dark:text-purple-400',
+  blue: 'text-blue-600 dark:text-blue-400',
+  green: 'text-green-600 dark:text-green-400',
 };
 
 export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
@@ -31,10 +31,10 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
         </div>
       </div>
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
-        <p className="text-gray-400">{description}</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
+        <p className="text-gray-500 dark:text-gray-400">{description}</p>
         {timeEstimate && (
-          <p className="text-gray-500 text-sm mt-3">{timeEstimate}</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm mt-3">{timeEstimate}</p>
         )}
       </div>
     </div>

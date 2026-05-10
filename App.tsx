@@ -71,6 +71,17 @@ const App: React.FC = () => {
   const [baseImageBase64, setBaseImageBase64] = useState<string | null>(null);
   const [baseImageGenerating, setBaseImageGenerating] = useState(false);
 
+  // --- Theme ---
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : false; // default: light
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
   // --- UI State ---
   const [debugModalPhase, setDebugModalPhase] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -394,7 +405,7 @@ const App: React.FC = () => {
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-[#0f0f12] text-slate-200 selection:bg-purple-500 selection:text-white font-sans flex">
+    <div className="min-h-screen bg-white dark:bg-[#0f0f12] text-gray-900 dark:text-slate-200 selection:bg-purple-500 selection:text-white font-sans flex">
       {/* Left Sidebar: Project History */}
       <ProjectHistory
         projects={projects}
@@ -411,21 +422,28 @@ const App: React.FC = () => {
         <ApiKeyModal isOpen={isKeyModalOpen} onSave={(_key: string) => { setIsKeyModalOpen(false); setHasKey(true); }} />
 
         {/* Header */}
-      <header className="w-full py-6 border-b border-white/5 bg-[#0f0f12]/90 backdrop-blur-md sticky top-0 z-50">
+      <header className="w-full py-6 border-b border-gray-200 dark:border-white/5 bg-white/90 dark:bg-[#0f0f12]/90 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setAppState(ShopeeAppState.IDLE)}>
             <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-600/50">
               <span className="text-white font-bold">PM</span>
             </div>
-            <h1 className="text-lg font-bold text-white hidden md:block">
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white hidden md:block">
               AI Product Marketing Designer <span className="text-purple-500 text-xs align-top ml-1">SHOPEE</span>
             </h1>
           </div>
           <div className="flex gap-4 items-center">
-            <button onClick={() => setIsGuideOpen(true)} className="text-gray-400 hover:text-white text-sm font-medium transition-colors">
+            <button
+              onClick={() => setDarkMode((v) => !v)}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm font-medium transition-colors"
+              title={darkMode ? '切換白天模式' : '切換夜間模式'}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            <button onClick={() => setIsGuideOpen(true)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm font-medium transition-colors">
               功能導覽 v0.9
             </button>
-            <button onClick={() => setIsKeyModalOpen(true)} className="text-purple-400 hover:text-purple-300 text-sm font-bold">
+            <button onClick={() => setIsKeyModalOpen(true)} className="text-purple-500 hover:text-purple-600 dark:text-purple-400 dark:hover:text-purple-300 text-sm font-bold">
               {hasKey ? '更換 API Key' : '設定 API Key'}
             </button>
           </div>
@@ -447,14 +465,14 @@ const App: React.FC = () => {
         {/* Idle View */}
         {appState === ShopeeAppState.IDLE && (
           <div className="flex-1 flex flex-col items-center mt-8 text-center">
-            <div className="inline-block px-3 py-1 rounded-full bg-purple-900/30 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-6">
+            <div className="inline-block px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-500/30 text-purple-600 dark:text-purple-300 text-xs font-bold uppercase tracking-widest mb-6">
               v0.9 — Shopee Edition
             </div>
-            <h2 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
+            <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
               台灣蝦皮<br />商品圖片生成器
             </h2>
-            <p className="text-gray-400 max-w-xl mx-auto mb-8 text-lg">
-              一鍵生成 <span className="text-purple-400 font-bold">6 張主圖</span> + <span className="text-purple-400 font-bold">4-6 張詳情圖</span> + SKU 圖。
+            <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto mb-8 text-lg">
+              一鍵生成 <span className="text-purple-600 dark:text-purple-400 font-bold">6 張主圖</span> + <span className="text-purple-600 dark:text-purple-400 font-bold">4-6 張詳情圖</span> + SKU 圖。
               <br />包含 SEO 標題、產品描述、合規檢查。
             </p>
             <InputForm
@@ -496,15 +514,15 @@ const App: React.FC = () => {
 
             {/* Strategy Route Selection */}
             <div className="mb-10">
-              <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
-                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">1</div>
-                <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 flex-1">
+              <div className="flex items-center gap-2 mb-6 border-b border-gray-200 dark:border-white/10 pb-4">
+                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">1</div>
+                <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-500 dark:from-blue-400 dark:to-indigo-400 flex-1">
                   Phase 1: 視覺策略選擇
                 </h2>
                 {directorOutput._debugPrompt && (
                   <button
                     onClick={() => setDebugModalPhase(1)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors border border-white/5"
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-300 dark:border-white/5"
                   >
                     檢視提示詞
                   </button>
@@ -521,8 +539,8 @@ const App: React.FC = () => {
                     }}
                     className={`p-5 rounded-xl border text-left transition-all duration-300 ${
                       activeRouteIndex === idx
-                        ? 'bg-white text-black border-white scale-[1.02] shadow-lg'
-                        : 'bg-[#15151a] text-gray-400 border-white/5 hover:bg-[#1a1a1f]'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-black border-gray-900 dark:border-white scale-[1.02] shadow-lg'
+                        : 'bg-gray-50 dark:bg-[#15151a] text-gray-600 dark:text-gray-400 border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-[#1a1a1f]'
                     }`}
                   >
                     <div className="text-xs font-bold uppercase opacity-70 mb-1">
@@ -539,17 +557,17 @@ const App: React.FC = () => {
             {/* Phase 1 Visual Concept Previews */}
             {directorOutput.visualStrategies[activeRouteIndex] && (
               <div className="mb-12">
-                <h3 className="text-lg font-bold text-white mb-4">視覺策略預覽</h3>
-                <div className="bg-[#1a1a1f] border border-white/10 rounded-xl p-6">
-                  <p className="text-gray-300 text-sm mb-3">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">視覺策略預覽</h3>
+                <div className="bg-gray-50 dark:bg-[#1a1a1f] border border-gray-200 dark:border-white/10 rounded-xl p-6">
+                  <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">
                     <span className="text-gray-500">視覺風格：</span>
                     {visualStyleLabels[directorOutput.visualStrategies[activeRouteIndex].styleCategory]}
                   </p>
-                  <p className="text-gray-300 text-sm mb-3">
+                  <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">
                     <span className="text-gray-500">視覺元素：</span>
                     {directorOutput.visualStrategies[activeRouteIndex].visualElementsZh}
                   </p>
-                  <p className="text-gray-300 text-sm">
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">
                     <span className="text-gray-500">風格簡述：</span>
                     {directorOutput.visualStrategies[activeRouteIndex].styleBriefZh}
                   </p>
@@ -559,13 +577,13 @@ const App: React.FC = () => {
 
             {/* Proceed to Phase 2 */}
             {appState === ShopeeAppState.PHASE1_READY && (
-              <div className="border-t border-white/10 pt-12">
-                <div className="bg-[#1e1e24] rounded-2xl p-8 border border-purple-500/20">
+              <div className="border-t border-gray-200 dark:border-white/10 pt-12">
+                <div className="bg-gray-50 dark:bg-[#1e1e24] rounded-2xl p-8 border border-purple-300 dark:border-purple-500/20">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">2</div>
-                    <h3 className="text-xl font-bold text-white">Phase 2: 生成蝦皮 Listing</h3>
+                    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">2</div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Phase 2: 生成蝦皮 Listing</h3>
                   </div>
-                  <p className="text-gray-400 text-sm mb-6">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
                     根據「{directorOutput.visualStrategies[activeRouteIndex].headlineZh}」策略，生成完整蝦皮 Listing：
                     SEO 標題、產品描述、主圖 Prompt、詳情圖 Prompt、合規檢查。
                   </p>
@@ -610,12 +628,12 @@ const App: React.FC = () => {
         {/* Phase 3: Image Production (independent of Phase 1 results) */}
         {showPhase3 && shopeeListing && (
           <div className="w-full max-w-6xl mx-auto px-4 pb-20">
-            <div className="border-t border-white/10 pt-12">
+            <div className="border-t border-gray-200 dark:border-white/10 pt-12">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-bold">3</div>
-                <h2 className="text-2xl font-bold text-white">Phase 3: 圖片生產</h2>
+                <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 flex items-center justify-center font-bold">3</div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Phase 3: 圖片生產</h2>
               </div>
-              <p className="text-gray-400 text-sm mb-8">
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">
                 逐張生成圖片。主圖 1024×1024，詳情圖 1024×1536。圖片生成需 30-90 秒，請耐心等候。
               </p>
               <ShopeeImageGrid
@@ -631,7 +649,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="w-full py-6 text-center border-t border-white/5 text-xs text-gray-600">
+      <footer className="w-full py-6 text-center border-t border-gray-200 dark:border-white/5 text-xs text-gray-500 dark:text-gray-600">
         AI Product Marketing Designer · Shopee Edition
       </footer>
 

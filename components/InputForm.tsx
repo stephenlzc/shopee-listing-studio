@@ -121,8 +121,8 @@ export const InputForm: React.FC<InputFormProps> = ({
   };
 
   const inputClass = (field: string) =>
-    `w-full bg-[#15151a] border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none transition-colors ${
-      inputErrors[field] ? 'border-red-500' : 'border-white/10 focus:border-purple-500'
+    `w-full bg-white dark:bg-[#15151a] border rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none transition-colors ${
+      inputErrors[field] ? 'border-red-500' : 'border-gray-300 dark:border-white/10 focus:border-purple-500'
     }`;
 
   return (
@@ -132,8 +132,8 @@ export const InputForm: React.FC<InputFormProps> = ({
         <label
           className={`flex flex-col items-center justify-center w-full h-80 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden ${
             selectedFile
-              ? 'border-purple-500 bg-[#15151a]'
-              : 'border-gray-600 hover:border-gray-400 hover:bg-[#1a1a1f]'
+              ? 'border-purple-600 dark:border-purple-500 bg-purple-50 dark:bg-[#15151a]'
+              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1f]'
           }`}
         >
           {imagePreview ? (
@@ -145,11 +145,11 @@ export const InputForm: React.FC<InputFormProps> = ({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 mb-3 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="mb-2 text-sm text-gray-400">上傳產品圖片</p>
-              <p className="text-xs text-gray-500">支援 JPG, PNG, WebP</p>
+              <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">上傳產品圖片</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">支援 JPG, PNG, WebP</p>
             </div>
           )}
           <input type="file" className="hidden" onChange={onFileChange} accept="image/*" />
@@ -160,8 +160,8 @@ export const InputForm: React.FC<InputFormProps> = ({
       <div className="order-1 md:order-2 flex flex-col gap-4 max-h-[600px] overflow-y-auto pr-1">
         {/* Product Name */}
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-            1. 產品名稱 <span className="text-red-400">*</span>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+            1. 產品名稱 <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -170,25 +170,25 @@ export const InputForm: React.FC<InputFormProps> = ({
             placeholder="例如：玻尿酸保濕精華液、胺基酸潔顏乳..."
             className={inputClass('productName')}
           />
-          {inputErrors.productName && <p className="text-red-400 text-xs mt-1">{inputErrors.productName}</p>}
+          {inputErrors.productName && <p className="text-red-600 dark:text-red-400 text-xs mt-1">{inputErrors.productName}</p>}
         </div>
 
         {/* Brand Context */}
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">2. 品牌 / 背景資訊</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">2. 品牌 / 背景資訊</label>
           <textarea
             value={brandContext}
             onChange={(e) => onBrandContextChange(e.target.value)}
             placeholder="品牌故事、官網連結、產品背景..."
             className={`${inputClass('brandContext')} h-20 resize-none text-sm`}
           />
-          {inputErrors.brandContext && <p className="text-red-400 text-xs mt-1">{inputErrors.brandContext}</p>}
+          {inputErrors.brandContext && <p className="text-red-600 dark:text-red-400 text-xs mt-1">{inputErrors.brandContext}</p>}
         </div>
 
         {/* Product Type + Specs + Capacity (inline) */}
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">產品類型</label>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">產品類型</label>
             <select
               value={productType}
               onChange={(e) => onProductTypeChange(e.target.value)}
@@ -200,7 +200,7 @@ export const InputForm: React.FC<InputFormProps> = ({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">規格</label>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">規格</label>
             <input
               type="text"
               value={specs}
@@ -210,7 +210,7 @@ export const InputForm: React.FC<InputFormProps> = ({
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">容量</label>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">容量</label>
             <input
               type="text"
               value={capacity}
@@ -223,7 +223,7 @@ export const InputForm: React.FC<InputFormProps> = ({
 
         {/* Features (tag inputs) */}
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">3. 產品特色 (3 個賣點)</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">3. 產品特色 (3 個賣點)</label>
           <div className="space-y-2">
             {features.slice(0, 5).map((f, i) => (
               <input
@@ -240,7 +240,7 @@ export const InputForm: React.FC<InputFormProps> = ({
 
         {/* Scenario */}
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">4. 適用場景</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">4. 適用場景</label>
           <input
             type="text"
             value={scenario}
@@ -252,7 +252,7 @@ export const InputForm: React.FC<InputFormProps> = ({
 
         {/* Visual Style */}
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">5. 視覺風格</label>
+          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">5. 視覺風格</label>
           <select
             value={visualStyle}
             onChange={(e) => onVisualStyleChange(e.target.value as ShopeeVisualStyle)}
@@ -270,7 +270,7 @@ export const InputForm: React.FC<InputFormProps> = ({
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1"
+          className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center gap-1"
         >
           <svg className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -283,39 +283,39 @@ export const InputForm: React.FC<InputFormProps> = ({
           <>
             {/* SKU Options */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                 6. SKU 選項（可選）
               </label>
               <div className="space-y-3">
                 {skuOptions.map((opt, i) => (
-                  <div key={i} className="flex gap-2 items-start bg-[#15151a] border border-white/5 rounded-lg p-3">
+                  <div key={i} className="flex gap-2 items-start bg-gray-50 dark:bg-[#15151a] border border-gray-200 dark:border-white/5 rounded-lg p-3">
                     <div className="flex-1 space-y-2">
                       <input
                         type="text"
                         value={opt.sku}
                         onChange={(e) => handleSkuChange(i, 'sku', e.target.value)}
                         placeholder="SKU 代號"
-                        className="w-full bg-black/30 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                        className="w-full bg-gray-100 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:border-purple-500 focus:outline-none"
                       />
                       <input
                         type="text"
                         value={opt.emojiName}
                         onChange={(e) => handleSkuChange(i, 'emojiName', e.target.value)}
                         placeholder="emoji + 名稱"
-                        className="w-full bg-black/30 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                        className="w-full bg-gray-100 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:border-purple-500 focus:outline-none"
                       />
                       <input
                         type="text"
                         value={opt.contents}
                         onChange={(e) => handleSkuChange(i, 'contents', e.target.value)}
                         placeholder="組合內容"
-                        className="w-full bg-black/30 border border-white/10 rounded px-3 py-1.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                        className="w-full bg-gray-100 dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:border-purple-500 focus:outline-none"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => handleSkuRemove(i)}
-                      className="text-red-400 hover:text-red-300 text-xs p-1 shrink-0"
+                      className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 text-xs p-1 shrink-0"
                     >
                       ✕
                     </button>
@@ -324,7 +324,7 @@ export const InputForm: React.FC<InputFormProps> = ({
                 <button
                   type="button"
                   onClick={handleSkuAdd}
-                  className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors flex items-center gap-1"
                 >
                   + 新增 SKU
                 </button>
@@ -333,7 +333,7 @@ export const InputForm: React.FC<InputFormProps> = ({
 
             {/* Custom Notes */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">7. 自訂備註</label>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">7. 自訂備註</label>
               <textarea
                 value={customNotes}
                 onChange={(e) => onCustomNotesChange(e.target.value)}
