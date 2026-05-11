@@ -227,6 +227,7 @@ export interface ShopeeProject {
   generationHistory: GenerationHistory[];
   processedImageUrl?: string;
   blurRegions?: BlurRegion[];
+  thumbnail?: string;                // Small thumbnail for sidebar display
   createdAt: number;
   updatedAt: number;
 }

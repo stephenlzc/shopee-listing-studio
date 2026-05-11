@@ -28,10 +28,12 @@ const ImageCard: React.FC<{
   prompt: ImagePrompt;
   productName: string;
   refImage?: string;
+  savedImage?: string;          // restored from IndexedDB after page refresh
   onGenerated?: (promptId: string, dataUrl: string | null) => void;
   generateRef?: React.MutableRefObject<(() => Promise<void>) | null>;
-}> = ({ prompt, productName, refImage, onGenerated, generateRef }) => {
+}> = ({ prompt, productName, refImage, savedImage, onGenerated, generateRef }) => {
   const { image, loading, error, generate, clearImage } = useImageGeneration();
+  const displayImage = image || savedImage;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -69,10 +71,11 @@ const ImageCard: React.FC<{
   }, [image, prompt.id, onGenerated]);
 
   const handleDownload = useCallback(() => {
-    if (image) {
-      downloadSingleImage(image, `${productName}_${prompt.id}.png`);
+    const img = displayImage;
+    if (img) {
+      downloadSingleImage(img, `${productName}_${prompt.id}.png`);
     }
-  }, [image, productName, prompt.id]);
+  }, [displayImage, productName, prompt.id]);
 
   const isDetail = prompt.size === '1024x1536';
   const containerClass = isDetail ? 'aspect-[2/3]' : 'aspect-square';
@@ -83,9 +86,9 @@ const ImageCard: React.FC<{
   return (
     <div className="flex flex-col gap-3">
       <div className={`relative rounded-xl overflow-hidden bg-gray-100 dark:bg-[#15151a] border border-gray-200 dark:border-white/10 shadow-lg ${containerClass}`}>
-        {image ? (
+        {displayImage ? (
           <div className="relative w-full h-full group">
-            <img src={image} alt={prompt.title} className="w-full h-full object-cover" />
+            <img src={displayImage} alt={prompt.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <button onClick={() => setIsModalOpen(true)} className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm" title="放大檢視">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +150,7 @@ const ImageCard: React.FC<{
         )}
       </div>
 
-      <ImageModal isOpen={isModalOpen} imageUrl={image} onClose={() => setIsModalOpen(false)} title={prompt.title} />
+      <ImageModal isOpen={isModalOpen} imageUrl={displayImage} onClose={() => setIsModalOpen(false)} title={prompt.title} />
     </div>
   );
 };
@@ -321,6 +324,7 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
             prompt={img}
             productName={productName}
             refImage={refImage}
+            savedImage={generatedMap.get(img.id)}
             onGenerated={handleGenerated}
             generateRef={generateRefs.current.get(img.id)!}
           />

@@ -122,9 +122,10 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    saveProject(project);
+    saveProject(project).then(() => {
+      setProjects(loadProjects());
+    });
     mergeProjectToDB(project).catch(() => {});
-    setProjects(loadProjects());
   }
 
   // --- Check for API Key on mount ---

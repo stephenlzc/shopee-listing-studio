@@ -9,6 +9,24 @@ const MAX_PROJECTS = 20;
 // Helpers
 // ============================================================================
 
+/** Generate an 80×80 JPEG thumbnail from a base64 data URL (async) */
+function generateThumbnail(dataUrl: string, size = 80): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not available')); return; }
+      ctx.drawImage(img, 0, 0, size, size);
+      resolve(canvas.toDataURL('image/jpeg', 0.5));
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = dataUrl;
+  });
+}
+
 export function loadProjects(): ShopeeProject[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -18,9 +36,47 @@ export function loadProjects(): ShopeeProject[] {
   }
 }
 
-export function saveProject(project: ShopeeProject): void {
+/** Save only lightweight project metadata to localStorage.
+ *  Heavy data (listing, images, generationHistory, etc.) goes to IndexedDB.
+ *  Generates an 80px thumbnail from the first product image.
+ */
+export async function saveProject(project: ShopeeProject): Promise<void> {
   const projects = loadProjects().filter((p) => p.id !== project.id);
-  projects.unshift({ ...project, updatedAt: Date.now() });
+
+  // Generate thumbnail from first product image
+  let thumbnail: string | undefined;
+  if (project.products?.[0]?.imageBase64) {
+    try {
+      thumbnail = await generateThumbnail(project.products[0].imageBase64);
+    } catch {
+      // Non-fatal — fall back to no thumbnail
+    }
+  } else if (project.thumbnail) {
+    thumbnail = project.thumbnail;
+  }
+
+  // Store only lightweight fields in localStorage
+  const lightEntry: ShopeeProject = {
+    id: project.id,
+    projectName: project.projectName,
+    status: project.status,
+    visualStyle: project.visualStyle,
+    products: thumbnail
+      ? [{ id: 'prod-1', imageBase64: thumbnail, name: project.projectName }]
+      : [],
+    skuOptions: [],
+    listing: null,
+    images: {},
+    taskMap: {},
+    generationHistory: [],
+    processedImageUrl: undefined,
+    blurRegions: undefined,
+    thumbnail,
+    createdAt: project.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  projects.unshift(lightEntry);
   if (projects.length > MAX_PROJECTS) projects.length = MAX_PROJECTS;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
 }
@@ -156,9 +212,9 @@ export const ProjectHistory: React.FC<ProjectHistoryProps> = ({
                     <div className="flex items-center gap-3 p-2">
                       {/* Thumbnail */}
                       <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-[#15151a] border border-gray-300 dark:border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                        {project.products?.[0]?.imageBase64 ? (
+                        {project.thumbnail || project.products?.[0]?.imageBase64 ? (
                           <img
-                            src={project.products[0].imageBase64}
+                            src={project.thumbnail || project.products?.[0]?.imageBase64 || ''}
                             alt=""
                             className="w-full h-full object-cover"
                           />
