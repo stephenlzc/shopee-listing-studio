@@ -244,7 +244,7 @@ export const ShopeeImageGrid: React.FC<ShopeeImageGridProps> = ({
         for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
         zip.file(`${id}.png`, new Blob([u8], { type: mime }));
       }
-      const zipName = `${productName}_Shopee`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
+      const zipName = productName;
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
