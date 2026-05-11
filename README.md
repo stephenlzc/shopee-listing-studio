@@ -149,7 +149,7 @@ src/
 
 ## 致謝
 
-本專案基於 [AI-PM-Designer-Pro](https://github.com/mkhsu2002/AI-PM-Designer-Pro) (v0.8) 重構而來。感謝原作者的創意與基礎架構，我們在此基礎上進行了以下重大改造：
+本專案基於 [AI-PM-Designer-Pro](https://github.com/mkhsu2002/AI-PM-Designer-Pro) (v0.8) 重構而來，原始碼託管於 [stephenlzc/shopee-listing-studio](https://github.com/stephenlzc/shopee-listing-studio)。感謝原作者的創意與基礎架構，我們在此基礎上進行了以下重大改造：
 
 - 從 Google Gemini 遷移至 APIMart API（GPT-5.5 + GPT-Image-2）
 - 從 4-Phase 廣告行銷工作流轉變為 3-Phase 蝦皮 Listing 工作流
