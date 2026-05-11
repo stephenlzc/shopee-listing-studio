@@ -8,13 +8,20 @@
 
 ## 快速開始
 
-### 1. 安裝依賴
+### 1. 下載專案
+
+```bash
+git clone https://github.com/stephenlzc/shopee-listing-studio.git
+cd shopee-listing-studio
+```
+
+### 2. 安裝依賴
 
 ```bash
 npm install
 ```
 
-### 2. 設定 API Key
+### 3. 設定 API Key
 
 複製 `.env.example` 為 `.env`，填入你的 APIMart API Key：
 
@@ -30,7 +37,7 @@ VITE_APIMART_API_KEY=你的_API_Key
 
 > `.env` 已被 `.gitignore` 排除，不會上傳到 GitHub。
 
-### 3. 啟動開發伺服器
+### 4. 啟動開發伺服器
 
 ```bash
 npm run dev
